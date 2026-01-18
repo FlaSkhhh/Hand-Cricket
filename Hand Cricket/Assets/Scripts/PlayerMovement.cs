@@ -1,6 +1,7 @@
+using Unity.Netcode;
 using UnityEngine;
 
-public class PlayerMovement : MonoBehaviour
+public class PlayerMovement : NetworkBehaviour
 {
     [SerializeField]
     float moveSpeed;
@@ -10,13 +11,15 @@ public class PlayerMovement : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+        if(NetworkManager.Singleton.IsHost)transform.position = new Vector3(-2,0,0);
+        else transform.position = new Vector3(2,0,0);
     }
 
     void FixedUpdate()
     {
         GetInput();
         //Debug.Log(moveVector);
-        rb.AddForce(moveVector * moveSpeed * Time.deltaTime,ForceMode.VelocityChange);
+        if(IsOwner)rb.AddForce(moveVector * moveSpeed * Time.deltaTime,ForceMode.VelocityChange);
     }
 
     void GetInput()
