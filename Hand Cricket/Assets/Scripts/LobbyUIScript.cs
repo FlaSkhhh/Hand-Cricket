@@ -23,7 +23,7 @@ public class LobbyUIScript : MonoBehaviour
 
     [SerializeField] Transform lobbyDisplayContent;
 
-    async void Start()
+    void Start()
     {
         startUIPage.SetActive(true);
         lobbySearchUIPage.SetActive(false);

@@ -1,5 +1,11 @@
 {
   "dependencies": {
+    "com.unity.2d.sprite": {
+      "version": "1.0.0",
+      "depth": 0,
+      "source": "builtin",
+      "dependencies": {}
+    },
     "com.unity.burst": {
       "version": "1.8.25",
       "depth": 1,
@@ -109,7 +115,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.multiplayer.tools": {
-      "version": "2.2.6",
+      "version": "2.2.7",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -124,7 +130,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.netcode.gameobjects": {
-      "version": "2.7.0",
+      "version": "2.8.0",
       "depth": 0,
       "source": "registry",
       "dependencies": {
