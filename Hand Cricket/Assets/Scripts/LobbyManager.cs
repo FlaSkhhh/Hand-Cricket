@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
-using Unity.Networking.Transport.Relay;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Lobbies;
@@ -10,14 +9,18 @@ using Unity.Services.Lobbies.Models;
 using Unity.Services.Relay;
 using Unity.Services.Relay.Models;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class LobbyManager : MonoBehaviour
 {
     public static LobbyManager Instance;
 
+    [SerializeField] GameObject teamManagerPrefab;
+
     Lobby activeLobby;
     bool isHost;
     string thisPlayerId;
+    string playerName;
 
     void Awake()
     {
@@ -36,11 +39,20 @@ public class LobbyManager : MonoBehaviour
         await AuthenticationService.Instance.SignInAnonymouslyAsync();
 
         thisPlayerId = AuthenticationService.Instance.PlayerId;
+        playerName = "Player_"+thisPlayerId.Substring(0,5);
     }
 
+ 
     public void StartGame()
     {
-        NetworkManager.Singleton.SceneManager.LoadScene("Game Scene",UnityEngine.SceneManagement.LoadSceneMode.Single );
+        NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+        NetworkManager.Singleton.SceneManager.LoadScene("Game Scene",LoadSceneMode.Single );
+    }
+
+    [Rpc(SendTo.Everyone)]
+    async void StartGameForEveryoneRpc()
+    {
+        await SceneManager.LoadSceneAsync(1);
     }
 
     public async Task<bool> CreateLobby(int maxPlayers, string lobbyName)
@@ -55,21 +67,25 @@ public class LobbyManager : MonoBehaviour
             {
                 Data = new Dictionary<string, DataObject>
                 {
-                    { "RelayCode", new DataObject(DataObject.VisibilityOptions.Member, relayJoinCode) }
+                    { "RelayCode", new DataObject(DataObject.VisibilityOptions.Member, relayJoinCode) },
+                    { "PlayerName", new DataObject(DataObject.VisibilityOptions.Member, playerName) }
                 }
             };
             //start lobby
             Lobby lobby = await LobbyService.Instance.CreateLobbyAsync(lobbyName, maxPlayers,options);
             Debug.Log("Lobby Created Code " + lobby.LobbyCode);
-            LobbyEventCallbacks callbacks = new LobbyEventCallbacks();
-            await LobbyService.Instance.SubscribeToLobbyEventsAsync(lobby.Id, callbacks);
-            Debug.Log("Lobby Callback Event Subbed");
-            callbacks.PlayerJoined += (List<LobbyPlayerJoined> pj) => { Debug.Log("Player Joined"); };
             activeLobby = lobby;
             isHost = true;
 
             SetupTransport(allocation);
+
             NetworkManager.Singleton.StartHost();
+
+            NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+            GameObject go = Instantiate(teamManagerPrefab);
+            go.GetComponent<NetworkObject>().Spawn();
+
+            TeamManager.Instance.SetTeam(NetworkManager.Singleton.LocalClientId);
 
             InvokeRepeating(nameof(LobbyHeartbeat), 15f, 15f);
             return true;
@@ -136,6 +152,11 @@ public class LobbyManager : MonoBehaviour
             Debug.LogError(ex);
             return false;
         }
+    }
+
+    void OnClientConnected(ulong cId)
+    {
+        TeamManager.Instance.SetTeam(cId);
     }
 
     private void SetupTransport(Allocation allocation)

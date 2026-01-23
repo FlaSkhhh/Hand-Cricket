@@ -16,6 +16,7 @@ public class GameUIScript : MonoBehaviour
 
     [SerializeField] TextMeshProUGUI opponentSelectedRun;
     [SerializeField] TextMeshProUGUI totalRunsText;
+    [SerializeField] TextMeshProUGUI targetRunsText;
     [SerializeField] TextMeshProUGUI currentBallStatusText;
 
     int runButtonSelectedIndex;
@@ -61,7 +62,7 @@ public class GameUIScript : MonoBehaviour
 
     public void SetOpponentRun(int i)
     {
-        opponentSelectedRun.text = i.ToString();
+        //opponentSelectedRun.text = i.ToString();
     }
 
     public void SetMatchUI(string status, string total)
@@ -75,10 +76,20 @@ public class GameUIScript : MonoBehaviour
         run = new int[6] { 1, 1, 1, 1, 1, 1 };
         foreach(Button butt in runButtons)
         {
+            butt.interactable = true;
             butt.image.sprite = runDiesSprites[0];
         }
-        opponentSelectedRun.text = "-";
+        //opponentSelectedRun.text = "-";
         submitRun.gameObject.SetActive(true);
         currentBallStatusText.text = " ";
+    }
+
+    public void DisableUI()
+    {
+        foreach (Button butt in runButtons)
+        {
+            butt.interactable = false;
+        }
+        submitRun.gameObject.SetActive(false);
     }
 }
