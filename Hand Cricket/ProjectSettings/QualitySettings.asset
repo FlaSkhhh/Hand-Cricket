@@ -4,7 +4,7 @@
 QualitySettings:
   m_ObjectHideFlags: 0
   serializedVersion: 5
-  m_CurrentQuality: 5
+  m_CurrentQuality: 2
   m_QualitySettings:
   - serializedVersion: 5
     name: Very Low
@@ -134,7 +134,7 @@ QualitySettings:
     realtimeReflectionProbes: 0
     billboardsFaceCameraPosition: 0
     useLegacyDetailDistribution: 1
-    adaptiveVsync: 0
+    adaptiveVsync: 1
     vSyncCount: 1
     realtimeGICPUUsage: 25
     adaptiveVsyncExtraA: 0
@@ -336,8 +336,8 @@ QualitySettings:
     PS4: 5
     PS5: 5
     Stadia: 5
-    Standalone: 5
-    WebGL: 3
+    Standalone: 2
+    WebGL: 2
     Windows Store Apps: 5
     XboxOne: 5
     iPhone: 2
