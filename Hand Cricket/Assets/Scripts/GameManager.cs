@@ -12,6 +12,8 @@ public class GameManager : NetworkBehaviour
     int totalRuns = 0;
     int targetRuns = 0;
 
+    int wickets = 0;
+
     int teamA_index;
     int teamB_index;
 
@@ -31,6 +33,7 @@ public class GameManager : NetworkBehaviour
         currentMatchState = MatchState.Inning1;
         teamA_index = 0;
         teamB_index = 0;
+        wickets = 0;
         ResetInning();
     }
 
@@ -90,21 +93,24 @@ public class GameManager : NetworkBehaviour
             if (batsmanRun[i] == bowlerRun[i])
             {
                 //out
-                gameUIScript.SetMatchUI("BATSMAN IS OUT AT " + totalRuns.ToString() + " RUNS", "0");
+                wickets++;
+                gameUIScript.SetMatchUI("BATSMAN IS OUT AT " + totalRuns.ToString() + " RUNS", totalRuns.ToString(), wickets.ToString());
                 
-                if(currentMatchState == MatchState.Inning1)
+                if (currentMatchState == MatchState.Inning1)
                 {
                     if (teamA_index >= TeamManager.Instance.teamA_Ids.Count - 1)
                     {
                         targetRuns = totalRuns + 1;
                         currentMatchState = MatchState.Inning2;
                         yield return new WaitForSeconds(1);
+                        gameUIScript.SetTargetRuns(targetRuns);
                         ResetInning();
                         yield break;
                     }
                     else
                     {
                         teamA_index++;
+                        gameUIScript.SetOverText(true, false, -1);      //non final batsman out so skip rest of over
                     }
                 }
                 else
@@ -119,15 +125,17 @@ public class GameManager : NetworkBehaviour
                     else
                     {
                         teamB_index++;
+                        gameUIScript.SetOverText(true, false, -1);
                     }
                 }
                 break;
             }
             else
-            {
+            {   //batsman scores runs
                 totalRuns += batsmanRun[i];
-                gameUIScript.SetMatchUI(totalRuns.ToString() + " RUNS SCORED BY BATSMAN!", totalRuns.ToString());
-                if(currentMatchState == MatchState.Inning2)
+                gameUIScript.SetMatchUI(totalRuns.ToString() + " RUNS SCORED BY BATSMAN!", totalRuns.ToString(), wickets.ToString());
+                gameUIScript.SetOverText(false, false, i + 1);
+                if (currentMatchState == MatchState.Inning2)
                 {
                     if(totalRuns >= targetRuns)
                     {
@@ -159,7 +167,7 @@ public class GameManager : NetworkBehaviour
         {
             winnerTeam = "Team A";
         }
-        gameUIScript.SetMatchUI(winnerTeam + " has won the match!", totalRuns.ToString());
+        gameUIScript.SetMatchUI(winnerTeam + " has won the match!", totalRuns.ToString(), wickets.ToString());
     }
 
     void ResetInning()
@@ -167,7 +175,10 @@ public class GameManager : NetworkBehaviour
         teamB_index = 0;
         teamA_index = 0;
         totalRuns = 0;
+        wickets = 0;
         ResetRunSelection();
+        gameUIScript.SetMatchUI("", totalRuns.ToString(), wickets.ToString());
+        gameUIScript.SetOverText(false, true, -1);
     }
     
     void ResetRunSelection()
