@@ -21,6 +21,7 @@ public class LobbyManager : MonoBehaviour
     bool isHost;
     string thisPlayerId;
     string playerName;
+    string relayJoinCode;
 
     void Awake()
     {
@@ -39,53 +40,49 @@ public class LobbyManager : MonoBehaviour
         await AuthenticationService.Instance.SignInAnonymouslyAsync();
 
         thisPlayerId = AuthenticationService.Instance.PlayerId;
-        playerName = "Player_"+thisPlayerId.Substring(0,5);
+        playerName = "Playa_"+thisPlayerId.Substring(0,4);
     }
 
  
     public void StartGame()
     {
+        if (isHost) CancelInvoke(nameof(LobbyHeartbeat));
         NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
-        NetworkManager.Singleton.SceneManager.LoadScene("Game Scene",LoadSceneMode.Single );
+        NetworkManager.Singleton.SceneManager.LoadScene("Game Scene",LoadSceneMode.Single);
     }
 
-    [Rpc(SendTo.Everyone)]
-    async void StartGameForEveryoneRpc()
-    {
-        await SceneManager.LoadSceneAsync(1);
-    }
-
-    public async Task<bool> CreateLobby(int maxPlayers, string lobbyName)
+    public async Task<bool> CreateLobby(int maxPlayers)
     {
         try
         {
             //setup relay
             Allocation allocation = await RelayService.Instance.CreateAllocationAsync(maxPlayers);
-            string relayJoinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
+            relayJoinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
 
             CreateLobbyOptions options = new CreateLobbyOptions
             {
                 Data = new Dictionary<string, DataObject>
                 {
-                    { "RelayCode", new DataObject(DataObject.VisibilityOptions.Member, relayJoinCode) },
-                    { "PlayerName", new DataObject(DataObject.VisibilityOptions.Member, playerName) }
-                }
+                    { "RelayCode", new DataObject(DataObject.VisibilityOptions.Member, relayJoinCode) }
+                },
             };
             //start lobby
-            Lobby lobby = await LobbyService.Instance.CreateLobbyAsync(lobbyName, maxPlayers,options);
+            Lobby lobby = await LobbyService.Instance.CreateLobbyAsync(playerName, maxPlayers,options);
             Debug.Log("Lobby Created Code " + lobby.LobbyCode);
             activeLobby = lobby;
             isHost = true;
 
             SetupTransport(allocation);
-
             NetworkManager.Singleton.StartHost();
 
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
             GameObject go = Instantiate(teamManagerPrefab);
-            go.GetComponent<NetworkObject>().Spawn();
+            go.GetComponent<NetworkObject>().Spawn();       //spawn teammanger so it also spawns on clients
 
+            //set host stuff into the data
             TeamManager.Instance.SetTeam(NetworkManager.Singleton.LocalClientId);
+
+            TeamManager.Instance.AddPlayerName(NetworkManager.Singleton.LocalClientId, playerName);     
 
             InvokeRepeating(nameof(LobbyHeartbeat), 15f, 15f);
             return true;
@@ -103,7 +100,6 @@ public class LobbyManager : MonoBehaviour
         try
         {
             QueryResponse response = await LobbyService.Instance.QueryLobbiesAsync();
-            //Debug.Log(response.Results[0].LobbyCode + " " + response.Results[0].Id);     //lobby code is private share only code not available to clients only for host
             return response;
         }
         catch (LobbyServiceException ex) { 
@@ -117,15 +113,18 @@ public class LobbyManager : MonoBehaviour
     {
         try
         {
+
             Lobby joinedLobby = await LobbyService.Instance.JoinLobbyByIdAsync(joinCode);
+
             activeLobby = joinedLobby;
             if (joinedLobby.Data.ContainsKey("RelayCode"))
             {
-                string relayJoinCode = joinedLobby.Data["RelayCode"].Value;
+                relayJoinCode = joinedLobby.Data["RelayCode"].Value;
                 JoinAllocation joinAllocation = await RelayService.Instance.JoinAllocationAsync(relayJoinCode);
 
                 SetupTransport(joinAllocation);
                 NetworkManager.Singleton.StartClient();
+
                 return true;
             }
             isHost = false;
@@ -159,7 +158,7 @@ public class LobbyManager : MonoBehaviour
         TeamManager.Instance.SetTeam(cId);
     }
 
-    private void SetupTransport(Allocation allocation)
+    void SetupTransport(Allocation allocation)
     {
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
 
@@ -172,7 +171,7 @@ public class LobbyManager : MonoBehaviour
         );
     }
 
-    private void SetupTransport(JoinAllocation allocation)
+    void SetupTransport(JoinAllocation allocation)
     {
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
 
@@ -200,5 +199,9 @@ public class LobbyManager : MonoBehaviour
                 await LobbyService.Instance.SendHeartbeatPingAsync(activeLobby.Id);
             }
         }
+    }
+
+    public string PlayerNameGetter() {
+        return playerName;
     }
 }

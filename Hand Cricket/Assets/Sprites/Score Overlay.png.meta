@@ -162,7 +162,7 @@ TextureImporter:
         serializedVersion: 2
         x: 1330
         y: 0
-        width: 590
+        width: 363
         height: 128
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
@@ -182,9 +182,9 @@ TextureImporter:
       name: Score Overlay_2
       rect:
         serializedVersion: 2
-        x: 0
+        x: 227
         y: 0
-        width: 590
+        width: 363
         height: 128
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
@@ -196,6 +196,50 @@ TextureImporter:
       bones: []
       spriteID: 7108fc65249916b4ab46552da5b39540
       internalID: 1761091321
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Score Overlay_3L
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 228
+        height: 128
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 4a255ccf352c1554b843e845fdba981e
+      internalID: 1648025551
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Score Overlay_4R
+      rect:
+        serializedVersion: 2
+        x: 1692
+        y: 0
+        width: 228
+        height: 128
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ca167cc781ea66c4c92cce1ae6e570a4
+      internalID: -284402362
       vertices: []
       indices: 
       edges: []
@@ -251,6 +295,8 @@ TextureImporter:
       Score Overlay_0: 297536752
       Score Overlay_1: -1237374811
       Score Overlay_2: 1761091321
+      Score Overlay_3L: 1648025551
+      Score Overlay_4R: -284402362
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

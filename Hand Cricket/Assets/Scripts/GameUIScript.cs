@@ -7,20 +7,31 @@ public class GameUIScript : MonoBehaviour
 {
     [SerializeField] GameManager gameManager;
 
+    [Header("GameObjects")]
     [SerializeField] GameObject runSelectionParent;
+    [SerializeField] GameObject runSelectionGroupGO;
+    [SerializeField] GameObject selectionButtonsPopup;
+
+    [Header("Buttons")]
     [SerializeField] Button submitRun;
     [SerializeField] Button[] runButtons;
-
-    [SerializeField] GameObject selectionButtonsPopup;
     [SerializeField] Button[] selectionButtons;
+
+    [Header("Sprites")]
     [SerializeField] Sprite[] runDiesSprites;
 
-    [SerializeField] TextMeshProUGUI opponentSelectedRun;
+    [Header("Texts")]
+    [SerializeField] TextMeshProUGUI teamNames;
     [SerializeField] TextMeshProUGUI totalRunsText;
     [SerializeField] TextMeshProUGUI targetRunsText;
     [SerializeField] TextMeshProUGUI currentOverText;
     [SerializeField] TextMeshProUGUI currentBallStatusText;
+    [SerializeField] TextMeshProUGUI bowlerStatsText;
+    [SerializeField] TextMeshProUGUI bowlerNameText;
+    [SerializeField] TextMeshProUGUI batsmaNameText;
+    [SerializeField] TextMeshProUGUI batsmaStatsText;
 
+    [Header("Animations")]
     [SerializeField] Animator runSelectionBarAnimator;
     [SerializeField] Animator[] diceAnimators;
 
@@ -28,8 +39,9 @@ public class GameUIScript : MonoBehaviour
     bool changeColour;
     float hue;
     int overNumber;
-    int wicketsNumber;
     int runButtonSelectedIndex;
+
+    bool isBattingTeam;
 
     int[] run = new int[6] {1,1,1,1,1,1};
 
@@ -50,7 +62,48 @@ public class GameUIScript : MonoBehaviour
         selectedButtonImage = runButtons[0].transform.parent.GetComponent<Image>();
         selectionButtonsPopup.SetActive(false);
         targetRunsText.text = "1st INNING";
+        teamNames.text = TeamManager.Instance.teamBName.Value.ToString() + " vs " + "<size=150%>" + TeamManager.Instance.teamAName.Value.ToString() + "</size>";  
         overNumber = 0;
+    }
+
+    public void TeamSideSet(bool isBatting)
+    {
+        isBattingTeam = isBatting;
+        RectTransform rectTransform = runSelectionGroupGO.GetComponent<RectTransform>();
+        Vector2 pos = rectTransform.anchoredPosition;
+        pos.x = Mathf.Abs(pos.x);
+        if (isBattingTeam)                                  //batting team will get balls runs section on left
+        {
+            rectTransform.anchorMin = new Vector2(0, rectTransform.anchorMin.y);
+            rectTransform.anchorMax = new Vector2(0, rectTransform.anchorMax.y);    //changing anchors to left side
+        }
+        else
+        {
+            pos.x *= -1;                                                            
+            rectTransform.anchorMin = new Vector2(1, rectTransform.anchorMin.y);    //to right side
+            rectTransform.anchorMax = new Vector2(1, rectTransform.anchorMax.y);
+        } 
+        runSelectionGroupGO.GetComponent<RectTransform>().anchoredPosition = pos;
+        RunSelectionPopupScaling(isBatting);
+    }
+
+    void RunSelectionPopupScaling(bool leftSide)
+    {
+        Transform parent = selectionButtonsPopup.transform.GetChild(0);     //this is parent of all 6 run dice buttons
+        if (leftSide)
+        {
+            foreach(Transform child in parent)
+            {
+                child.localScale = new(1, 1, 1);
+            }
+        }
+        else
+        {
+            foreach (Transform child in parent)
+            {
+                child.localScale = new(-1, -1, -1);
+            }
+        }
     }
 
     void Update()
@@ -67,7 +120,8 @@ public class GameUIScript : MonoBehaviour
         selectedButtonImage.color = Color.black;        //reset previous button colour
 
         selectionButtonsPopup.SetActive(true);
-        runSelectionBarAnimator.Play("RunSelectionBarOpen", -1, 0f);
+        if(isBattingTeam) runSelectionBarAnimator.Play("RunSelectionBarOpen", -1, 0f);
+        else runSelectionBarAnimator.Play("RunSelectionBarOpenRight", -1, 0f);
         selectionButtonsPopup.transform.SetParent(runButtons[buttonIndex].transform.parent,false);
 
         foreach (Animator anim in diceAnimators) {
@@ -116,7 +170,12 @@ public class GameUIScript : MonoBehaviour
 
     public void SetOverText(bool wicket, bool inningReset, int ballNo)  //this over number and texts are reset during main coroutine 
     {
-        if (inningReset) { currentOverText.text = "0"; overNumber = 0; return; } 
+        if (inningReset) 
+        { 
+            currentOverText.text = "0"; overNumber = 0;     //also change batting team name as larger to Team B
+            teamNames.text = TeamManager.Instance.teamAName.Value.ToString() + " vs " + "<size=150%>" + TeamManager.Instance.teamBName.Value.ToString() + "</size>";
+            return; 
+        } 
 
         if (!wicket)
         {
@@ -128,6 +187,26 @@ public class GameUIScript : MonoBehaviour
             overNumber++;
             currentOverText.text = overNumber.ToString();
         }
+    }
+
+    public void SetBatsmanName(string name)
+    {
+        batsmaNameText.text = name;
+    }
+
+    public void SetBatsmanStats(int runs, int balls)
+    {
+        batsmaStatsText.text = runs.ToString() + "  " + "<size=70%>"+balls.ToString()+"</size>";
+    }
+
+    public void SetBowlerName(string name)
+    {
+        bowlerNameText.text = name; 
+    }
+
+    public void SetBowlerStats(int runsA, string overs, int wicketsT)
+    {
+        bowlerStatsText.text = runsA.ToString() + "-" + wicketsT.ToString() + "  " + overs;
     }
 
     public void SetTargetRuns(int targetR)

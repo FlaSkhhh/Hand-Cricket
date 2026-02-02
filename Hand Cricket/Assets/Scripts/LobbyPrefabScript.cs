@@ -14,7 +14,7 @@ public class LobbyPrefabScript : MonoBehaviour
 
     public void SetLobbyPrefab(string name,string playerSlots,string lobbyId,LobbyUIScript reference, bool isLocked)
     {
-        lobbyNameT.text = name;
+        lobbyNameT.text = name +"'s Lobby";
         playerCountT.text = playerSlots;
         lobbyIdString = lobbyId;
         lobbyUIScript = reference;

@@ -23,6 +23,8 @@ public class LobbyUIScript : MonoBehaviour
 
     [SerializeField] Transform lobbyDisplayContent;
 
+    int maxPlayers;
+
     void Start()
     {
         startUIPage.SetActive(true);
@@ -38,7 +40,8 @@ public class LobbyUIScript : MonoBehaviour
 
     async void CreateLobby()
     {
-        bool completion = await LobbyManager.Instance.CreateLobby(4,"TestLobby");
+        maxPlayers = 4;
+        bool completion = await LobbyManager.Instance.CreateLobby(maxPlayers);
 
         startUIPage.SetActive(!completion);
         lobbyUIPage.SetActive(completion);
@@ -71,8 +74,9 @@ public class LobbyUIScript : MonoBehaviour
             GameObject go = Instantiate(lobbyPrefab.gameObject, lobbyDisplayContent);
             int aSlots = response.Results[i].AvailableSlots;
             int tSlots = response.Results[i].MaxPlayers;
+            string lobbyName = response.Results[i].Name;
             string slots = (tSlots - aSlots).ToString()+"/"+tSlots.ToString();
-            go.GetComponent<LobbyPrefabScript>().SetLobbyPrefab(response.Results[i].Name, slots, response.Results[i].Id, this, response.Results[i].IsLocked);
+            go.GetComponent<LobbyPrefabScript>().SetLobbyPrefab(lobbyName, slots, response.Results[i].Id, this, response.Results[i].IsLocked);
         }    
     }
 
