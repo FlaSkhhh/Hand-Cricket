@@ -13,7 +13,8 @@ public class TeamManager : NetworkBehaviour
     public NetworkVariable<FixedString32Bytes> teamAName;
     public NetworkVariable<FixedString32Bytes> teamBName;
 
-    public Dictionary<ulong,string> playerNames = new Dictionary<ulong,string>();    
+    public Dictionary<ulong,string> playerNames = new Dictionary<ulong,string>();
+    public Dictionary<ulong, GameObject> playerCharacters = new();
     void Awake()
     {
         if (Instance == null)
@@ -25,20 +26,49 @@ public class TeamManager : NetworkBehaviour
 
         teamA_Ids = new NetworkList<ulong>(readPerm: NetworkVariableReadPermission.Everyone, writePerm: NetworkVariableWritePermission.Server);
         teamB_Ids = new NetworkList<ulong>(readPerm: NetworkVariableReadPermission.Everyone, writePerm: NetworkVariableWritePermission.Server);
-        teamAName = new NetworkVariable<FixedString32Bytes>(readPerm: NetworkVariableReadPermission.Everyone, writePerm: NetworkVariableWritePermission.Owner);
-        teamBName = new NetworkVariable<FixedString32Bytes>(readPerm: NetworkVariableReadPermission.Everyone, writePerm: NetworkVariableWritePermission.Owner);
+        teamAName = new NetworkVariable<FixedString32Bytes>(readPerm: NetworkVariableReadPermission.Everyone, writePerm: NetworkVariableWritePermission.Server);
+        teamBName = new NetworkVariable<FixedString32Bytes>(readPerm: NetworkVariableReadPermission.Everyone, writePerm: NetworkVariableWritePermission.Server);
     }
 
     public override void OnNetworkSpawn()
     {
+        //CharacterSelect.instance.SpawnPlayerCharacters(PlayerPrefs.GetString("CustomCharacter").ToString());
+        CharacterSelect.instance.DestroyCustomisablePrefabClone();
+        teamA_Ids.OnListChanged += OnTeamAListChanged;
+        teamB_Ids.OnListChanged += OnTeamBListChanged;
         if (!IsHost) 
         {
-            FixedString32Bytes _ = LobbyManager.Instance.PlayerNameGetter();
+            FixedString32Bytes _ = LobbyManager.Instance.PlayerNameGetter() +","+ PlayerPrefs.GetString("CustomCharacter").ToString();
             SendNameToServerRpc(_);
             return; 
         }
         teamAName.Value = "TMA";
         teamBName.Value = "TMB";
+    }
+
+    void OnTeamAListChanged(NetworkListEvent<ulong> changeEvent)
+    {
+        ulong cId = changeEvent.Value;
+
+        ChangeCharacterTeam();
+        /*switch (changeEvent.Type)
+        {
+            case NetworkListEvent<ulong>.EventType.Add:
+                break;
+
+            case NetworkListEvent<ulong>.EventType.Remove:
+            case NetworkListEvent<ulong>.EventType.RemoveAt:
+                break;
+
+            case NetworkListEvent<ulong>.EventType.Clear:
+                break;
+        }*/
+    }
+    void OnTeamBListChanged(NetworkListEvent<ulong> changeEvent)
+    {
+        ulong cId = changeEvent.Value;
+
+        ChangeCharacterTeam();
     }
 
     public void SetTeam(ulong cId)
@@ -55,6 +85,7 @@ public class TeamManager : NetworkBehaviour
         }
     }
 
+    //this is to change batting and bowling sides as current scripts always take team A as batting in first inning
     public void SwapTeams()
     {
         List<ulong> tempA = new List<ulong>();
@@ -83,6 +114,7 @@ public class TeamManager : NetworkBehaviour
     void SendNameToAllClientsRpc(ulong cId, FixedString32Bytes clientName)
     {
         AddPlayerName(cId, clientName.ToString());
+        ChangeCharacterTeam();
     }
 
     void SendClientAllJoinedNames(ulong cId)
@@ -107,15 +139,52 @@ public class TeamManager : NetworkBehaviour
         {
             AddPlayerName(ids[i], names[i].ToString());
         }
+        ChangeCharacterTeam();
     }
 
     public void AddPlayerName(ulong cId, string playerName) 
     {
         playerNames.Add(cId, playerName);
+        Debug.Log($"PLAYER {playerName} ADDED AS ID {cId}");
+        GameObject character = CharacterSelect.instance.SpawnPlayerCharacters(playerName.Split(',')[1]);
+        playerCharacters.Add(cId, character);
     }
 
-    public void RemovePlayerName(ulong cid) 
+    void ChangeCharacterTeam()
     {
+        int counter = 0;
+        foreach(ulong cId in teamA_Ids)
+        {
+            if (!playerCharacters.ContainsKey(cId)) continue;
+            playerCharacters[cId].transform.position = new Vector3(-8f + counter * 2, -5.5f, 0);
+            playerCharacters[cId].transform.rotation = Quaternion.Euler(0, 180, 0);
+            counter++;
+        }
+        counter = 0;
+        foreach (ulong cId in teamB_Ids)
+        {
+            if (!playerCharacters.ContainsKey(cId)) continue;
+            playerCharacters[cId].transform.position = new Vector3(8f - counter * 2, -5.5f, 0); 
+            playerCharacters[cId].transform.rotation = Quaternion.Euler(0, 180, 0);
+            counter++;
+        }
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    public void RemovePlayerNameRpc(ulong cid) 
+    {
+        if (IsHost)
+        {
+            _ = teamA_Ids.Contains(cid) ? teamA_Ids.Remove(cid) : teamB_Ids.Remove(cid);
+        }
+        Destroy(playerCharacters[cid]);
+        playerCharacters.Remove(cid);
         playerNames.Remove(cid);
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        teamA_Ids.OnListChanged -= OnTeamAListChanged;
+        teamB_Ids.OnListChanged -= OnTeamBListChanged;
     }
 }

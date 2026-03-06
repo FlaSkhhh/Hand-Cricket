@@ -1,3 +1,4 @@
+using TMPro;
 using Unity.Services.Lobbies.Models;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -23,6 +24,8 @@ public class LobbyUIScript : MonoBehaviour
 
     [SerializeField] Transform lobbyDisplayContent;
 
+    [SerializeField] TMP_InputField nameField;
+
     int maxPlayers;
 
     void Start()
@@ -36,6 +39,14 @@ public class LobbyUIScript : MonoBehaviour
         startGame.onClick.AddListener(StartGameHost);
         lobbySearchBack.onClick.AddListener(() => { lobbySearchUIPage.SetActive(false); startUIPage.SetActive(true); });
         lobbyBack.onClick.AddListener(LeaveLobby);
+        nameField.onEndEdit.AddListener(NameChanged);
+
+        LobbyManager.Instance.PlayerSignedIn += PlayerNameChange;
+    }
+
+    void PlayerNameChange()
+    {
+        nameField.text = LobbyManager.Instance.PlayerNameGetter();
     }
 
     async void CreateLobby()
@@ -78,6 +89,11 @@ public class LobbyUIScript : MonoBehaviour
             string slots = (tSlots - aSlots).ToString()+"/"+tSlots.ToString();
             go.GetComponent<LobbyPrefabScript>().SetLobbyPrefab(lobbyName, slots, response.Results[i].Id, this, response.Results[i].IsLocked);
         }    
+    }
+
+    void NameChanged(string name)
+    {
+        LobbyManager.Instance.PlayerNameSetter(name);
     }
 
     void StartGameHost()

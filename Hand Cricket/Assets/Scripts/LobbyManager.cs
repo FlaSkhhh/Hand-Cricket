@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Unity.Netcode;
@@ -22,6 +23,8 @@ public class LobbyManager : MonoBehaviour
     string thisPlayerId;
     string playerName;
     string relayJoinCode;
+    
+    public Action PlayerSignedIn;
 
     void Awake()
     {
@@ -36,11 +39,11 @@ public class LobbyManager : MonoBehaviour
     async void Start()
     {
         await UnityServices.InitializeAsync();
-
         await AuthenticationService.Instance.SignInAnonymouslyAsync();
 
         thisPlayerId = AuthenticationService.Instance.PlayerId;
         playerName = "Playa_"+thisPlayerId.Substring(0,4);
+        PlayerSignedIn?.Invoke();       //for default name display on IF
     }
 
  
@@ -48,6 +51,7 @@ public class LobbyManager : MonoBehaviour
     {
         if (isHost) CancelInvoke(nameof(LobbyHeartbeat));
         NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+        NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
         NetworkManager.Singleton.SceneManager.LoadScene("Game Scene",LoadSceneMode.Single);
     }
 
@@ -76,13 +80,14 @@ public class LobbyManager : MonoBehaviour
             NetworkManager.Singleton.StartHost();
 
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
             GameObject go = Instantiate(teamManagerPrefab);
             go.GetComponent<NetworkObject>().Spawn();       //spawn teammanger so it also spawns on clients
 
             //set host stuff into the data
             TeamManager.Instance.SetTeam(NetworkManager.Singleton.LocalClientId);
 
-            TeamManager.Instance.AddPlayerName(NetworkManager.Singleton.LocalClientId, playerName);     
+            TeamManager.Instance.AddPlayerName(NetworkManager.Singleton.LocalClientId, playerName + "," + PlayerPrefs.GetString("CustomCharacter").ToString());     
 
             InvokeRepeating(nameof(LobbyHeartbeat), 15f, 15f);
             return true;
@@ -158,6 +163,11 @@ public class LobbyManager : MonoBehaviour
         TeamManager.Instance.SetTeam(cId);
     }
 
+    void OnClientDisconnected(ulong cId)
+    {
+        TeamManager.Instance.RemovePlayerNameRpc(cId);
+    }
+
     void SetupTransport(Allocation allocation)
     {
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
@@ -203,5 +213,9 @@ public class LobbyManager : MonoBehaviour
 
     public string PlayerNameGetter() {
         return playerName;
+    }
+
+    public void PlayerNameSetter(string name) { 
+        playerName = name;
     }
 }

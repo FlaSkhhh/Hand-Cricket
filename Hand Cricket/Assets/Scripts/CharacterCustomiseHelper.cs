@@ -13,6 +13,7 @@ public class CharacterCustomiseHelper : MonoBehaviour
         colourMaterial = mesh   .GetComponent<SkinnedMeshRenderer>().materials[0];
         faceMaterial = mesh.GetComponent<SkinnedMeshRenderer>().materials[1];
     }
+
     public CharacterCustomisationClass CharacterCustomisationGetter()
     {
         return new CharacterCustomisationClass() {colour = colourMaterial,face = faceMaterial, accessory = accessoryTransform };
