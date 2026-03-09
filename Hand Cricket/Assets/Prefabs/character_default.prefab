@@ -216,7 +216,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -6649697836553743001, guid: f9f65d468731bcf4fba794d064637f84, type: 3}
       propertyPath: m_CastShadows
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -6649697836553743001, guid: f9f65d468731bcf4fba794d064637f84, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -260,6 +260,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   accessoryTransform: {fileID: 5929485989767774664}
   mesh: {fileID: 7749126977425454936}
+  animator: {fileID: 9210283286231003274}
 --- !u!4 &6548067121843709477 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -836400511372743874, guid: f9f65d468731bcf4fba794d064637f84, type: 3}
@@ -268,6 +269,11 @@ Transform:
 --- !u!4 &7749126977425454936 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4985915374472247875, guid: f9f65d468731bcf4fba794d064637f84, type: 3}
+  m_PrefabInstance: {fileID: 3367542914208271643}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &9210283286231003274 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: f9f65d468731bcf4fba794d064637f84, type: 3}
   m_PrefabInstance: {fileID: 3367542914208271643}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &7635655348698074178

@@ -18,6 +18,10 @@ public class LobbyManager : MonoBehaviour
 
     [SerializeField] GameObject teamManagerPrefab;
 
+    GameObject loadingScreen;
+    Transform[] teamALineups;
+    Transform[] teamBLineups;
+
     Lobby activeLobby;
     bool isHost;
     string thisPlayerId;
@@ -28,12 +32,15 @@ public class LobbyManager : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null) 
+        if (Instance == null)
         {
-            Instance = this; 
+            Instance = this;
             DontDestroyOnLoad(gameObject);
         }
-        else Destroy(gameObject);
+        else 
+        {
+            Destroy(gameObject); 
+        }
     }
 
     async void Start()
@@ -44,16 +51,24 @@ public class LobbyManager : MonoBehaviour
         thisPlayerId = AuthenticationService.Instance.PlayerId;
         playerName = "Playa_"+thisPlayerId.Substring(0,4);
         PlayerSignedIn?.Invoke();       //for default name display on IF
+        LoadingScreenStatus(false);
     }
 
  
+    //called by host to start the game after lobby is filled
     public void StartGame()
     {
-        if (isHost) CancelInvoke(nameof(LobbyHeartbeat));
+        if (TeamManager.Instance.CheckTeamImbalance())
+        {
+            Debug.Log("TEAM IMBALANCE");
+            return;
+        }
+        CancelInvoke(nameof(LobbyHeartbeat));
         NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
         NetworkManager.Singleton.SceneManager.LoadScene("Game Scene",LoadSceneMode.Single);
     }
+  
 
     public async Task<bool> CreateLobby(int maxPlayers)
     {
@@ -217,5 +232,27 @@ public class LobbyManager : MonoBehaviour
 
     public void PlayerNameSetter(string name) { 
         playerName = name;
+    }
+
+
+    public void LineupPositionsSetter(Transform[] a, Transform[] b)
+    {
+        teamALineups = a;
+        teamBLineups = b;
+    }
+
+    public void LoadingScreenSetter(GameObject go)
+    {
+        loadingScreen = go;
+    }
+
+    public void LoadingScreenStatus(bool status)
+    {
+        loadingScreen.SetActive(status);
+    }
+
+    public (Transform[], Transform[]) LineupPositionsGetter()
+    {
+        return (teamALineups, teamBLineups);
     }
 }

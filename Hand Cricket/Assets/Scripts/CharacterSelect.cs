@@ -58,7 +58,7 @@ public class CharacterSelect : MonoBehaviour
 
     void InstantiateCharacter()
     {
-        GameObject guy = Instantiate(characterPrefab, new Vector3(Random.Range(-2,2), -5.5f, -3), Quaternion.Euler(0, 180, 0));
+        GameObject guy = Instantiate(characterPrefab, new Vector3(Random.Range(-2,2), -5.5f, -4),Quaternion.Euler(0,90,0));
         CharacterCustomisationClass vals = guy.GetComponent<CharacterCustomiseHelper>().CharacterCustomisationGetter();
         //asign variables 
         characterFaceMat = vals.face;
@@ -69,7 +69,7 @@ public class CharacterSelect : MonoBehaviour
 
     public GameObject SpawnPlayerCharacters(string key)
     {
-        GameObject guy = Instantiate(characterPrefab, new Vector3(Random.Range(-2, 2), -5.5f, -3), Quaternion.Euler(0, 180, 0));
+        GameObject guy = Instantiate(characterPrefab, new Vector3(Random.Range(-2, 2), -5.5f, -4), Quaternion.Euler(0, 90, 0));
         CharacterCustomisationClass vals = guy.GetComponent<CharacterCustomiseHelper>().CharacterCustomisationGetter();
 
         float[] custom = GetCharacterFromValues(key);

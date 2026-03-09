@@ -15,6 +15,10 @@ public class TeamManager : NetworkBehaviour
 
     public Dictionary<ulong,string> playerNames = new Dictionary<ulong,string>();
     public Dictionary<ulong, GameObject> playerCharacters = new();
+
+    bool isLocalPlayerTeamA;
+    bool needsTeamLineupUpdate;
+
     void Awake()
     {
         if (Instance == null)
@@ -34,6 +38,9 @@ public class TeamManager : NetworkBehaviour
     {
         //CharacterSelect.instance.SpawnPlayerCharacters(PlayerPrefs.GetString("CustomCharacter").ToString());
         CharacterSelect.instance.DestroyCustomisablePrefabClone();
+        playerNames.Clear();
+        playerCharacters.Clear();
+
         teamA_Ids.OnListChanged += OnTeamAListChanged;
         teamB_Ids.OnListChanged += OnTeamBListChanged;
         if (!IsHost) 
@@ -50,7 +57,7 @@ public class TeamManager : NetworkBehaviour
     {
         ulong cId = changeEvent.Value;
 
-        ChangeCharacterTeam();
+        ChangeCharacterPositionForTeamLineup();
         /*switch (changeEvent.Type)
         {
             case NetworkListEvent<ulong>.EventType.Add:
@@ -68,7 +75,7 @@ public class TeamManager : NetworkBehaviour
     {
         ulong cId = changeEvent.Value;
 
-        ChangeCharacterTeam();
+        ChangeCharacterPositionForTeamLineup();
     }
 
     public void SetTeam(ulong cId)
@@ -100,6 +107,12 @@ public class TeamManager : NetworkBehaviour
         foreach (ulong id in tempB) teamA_Ids.Add(id);
 
         foreach (ulong id in tempA) teamB_Ids.Add(id);
+
+        string tempAName = teamAName.Value.ToString();
+        string tempBName = teamBName.Value.ToString();
+
+        teamAName.Value = tempBName;
+        teamBName.Value = tempAName;
     }
 
     [Rpc(SendTo.Server)]
@@ -114,7 +127,7 @@ public class TeamManager : NetworkBehaviour
     void SendNameToAllClientsRpc(ulong cId, FixedString32Bytes clientName)
     {
         AddPlayerName(cId, clientName.ToString());
-        ChangeCharacterTeam();
+        ChangeCharacterPositionForTeamLineup();
     }
 
     void SendClientAllJoinedNames(ulong cId)
@@ -139,7 +152,7 @@ public class TeamManager : NetworkBehaviour
         {
             AddPlayerName(ids[i], names[i].ToString());
         }
-        ChangeCharacterTeam();
+        ChangeCharacterPositionForTeamLineup();
     }
 
     public void AddPlayerName(ulong cId, string playerName) 
@@ -150,25 +163,65 @@ public class TeamManager : NetworkBehaviour
         playerCharacters.Add(cId, character);
     }
 
-    void ChangeCharacterTeam()
+    [Rpc(SendTo.Server)]
+    public void ChangeTeamForPlayerRpc(ulong cId)
     {
+        if(teamA_Ids.Contains(cId))
+        {
+            teamA_Ids.Remove(cId);
+            if (!teamB_Ids.Contains(cId)) teamB_Ids.Add(cId);
+        }
+        else
+        {
+            teamB_Ids.Remove(cId);
+            if (!teamA_Ids.Contains(cId)) teamA_Ids.Add(cId);
+        }
+    }
+
+    void ChangeCharacterPositionForTeamLineup()
+    {
+        needsTeamLineupUpdate = true;
+    }
+
+    void LineupUpdate()
+    {
+        LocalPlayerTeamASetter(teamA_Ids.Contains(NetworkManager.Singleton.LocalClientId));
+
         int counter = 0;
-        foreach(ulong cId in teamA_Ids)
+        Transform[] teamALineup;
+        Transform[] teamBLineup;
+
+        (teamALineup, teamBLineup) = LobbyManager.Instance.LineupPositionsGetter();
+        foreach (ulong cId in teamA_Ids)
         {
             if (!playerCharacters.ContainsKey(cId)) continue;
-            playerCharacters[cId].transform.position = new Vector3(-8f + counter * 2, -5.5f, 0);
-            playerCharacters[cId].transform.rotation = Quaternion.Euler(0, 180, 0);
+            playerCharacters[cId].GetComponent<CharacterCustomiseHelper>().MoveToTeamLineup(teamALineup[counter].position);
             counter++;
         }
         counter = 0;
         foreach (ulong cId in teamB_Ids)
         {
             if (!playerCharacters.ContainsKey(cId)) continue;
-            playerCharacters[cId].transform.position = new Vector3(8f - counter * 2, -5.5f, 0); 
-            playerCharacters[cId].transform.rotation = Quaternion.Euler(0, 180, 0);
+            playerCharacters[cId].GetComponent<CharacterCustomiseHelper>().MoveToTeamLineup(teamBLineup[counter].position);
             counter++;
         }
     }
+    public bool CheckTeamImbalance()
+    {
+        if (Mathf.Abs(teamA_Ids.Count - teamB_Ids.Count) > 1)
+        {
+            TeamImbalanceSignalRpc();
+            return true;
+        }
+        else return false;
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    public void TeamImbalanceSignalRpc()
+    {
+        //set ui for team imbalance here so teams can be similar size
+    }
+
 
     [Rpc(SendTo.ClientsAndHost)]
     public void RemovePlayerNameRpc(ulong cid) 
@@ -184,7 +237,28 @@ public class TeamManager : NetworkBehaviour
 
     public override void OnNetworkDespawn()
     {
+        foreach(GameObject go in playerCharacters.Values) { Destroy(go); }
         teamA_Ids.OnListChanged -= OnTeamAListChanged;
         teamB_Ids.OnListChanged -= OnTeamBListChanged;
+    }
+
+    public bool LocalPlayerTeamAGetter()
+    {
+        return isLocalPlayerTeamA;
+    }
+
+    public void LocalPlayerTeamASetter(bool val)
+    {
+        isLocalPlayerTeamA = val;
+    }
+
+
+    void Update()
+    {
+        if (needsTeamLineupUpdate)
+        {
+            LineupUpdate();
+            needsTeamLineupUpdate = false;
+        }
     }
 }

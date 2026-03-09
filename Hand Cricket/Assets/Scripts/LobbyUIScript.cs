@@ -1,4 +1,5 @@
 using TMPro;
+using Unity.Netcode;
 using Unity.Services.Lobbies.Models;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -18,6 +19,7 @@ public class LobbyUIScript : MonoBehaviour
     [SerializeField] Button searchLobby;
     [SerializeField] Button refreshLobby;
     [SerializeField] Button startGame;
+    [SerializeField] Button changeTeams;
 
     [SerializeField] Button lobbySearchBack;
     [SerializeField] Button lobbyBack;
@@ -26,10 +28,17 @@ public class LobbyUIScript : MonoBehaviour
 
     [SerializeField] TMP_InputField nameField;
 
+    [SerializeField] Transform[] teamALineups; 
+    [SerializeField] Transform[] teamBLineups;
+
+    [SerializeField] GameObject loadingScreen;
+
     int maxPlayers;
 
     void Start()
     {
+        Application.targetFrameRate = 61;
+
         startUIPage.SetActive(true);
         lobbySearchUIPage.SetActive(false);
         lobbyUIPage.SetActive(false);
@@ -40,8 +49,12 @@ public class LobbyUIScript : MonoBehaviour
         lobbySearchBack.onClick.AddListener(() => { lobbySearchUIPage.SetActive(false); startUIPage.SetActive(true); });
         lobbyBack.onClick.AddListener(LeaveLobby);
         nameField.onEndEdit.AddListener(NameChanged);
+        changeTeams.onClick.AddListener(ChangeTeams);
 
         LobbyManager.Instance.PlayerSignedIn += PlayerNameChange;
+
+        LobbyManager.Instance.LineupPositionsSetter(teamALineups, teamBLineups);
+        LobbyManager.Instance.LoadingScreenSetter(loadingScreen);
     }
 
     void PlayerNameChange()
@@ -51,22 +64,26 @@ public class LobbyUIScript : MonoBehaviour
 
     async void CreateLobby()
     {
-        maxPlayers = 4;
+        maxPlayers = 10;
+        LobbyManager.Instance.LoadingScreenStatus(true);
         bool completion = await LobbyManager.Instance.CreateLobby(maxPlayers);
 
         startUIPage.SetActive(!completion);
         lobbyUIPage.SetActive(completion);
         startGame.gameObject.SetActive(true);
+        LobbyManager.Instance.LoadingScreenStatus(false);
     }
 
     async void SearchLobby()
     {
+        LobbyManager.Instance.LoadingScreenStatus(true);
         ClearLobbyContent();
         startUIPage.SetActive(false);
         lobbySearchUIPage.SetActive(true);
         Instantiate(lobbySearhingScrollViewPrefab,lobbyDisplayContent);
         QueryResponse response = await LobbyManager.Instance.SearchLobby();
         if(response != null) DisplayLobbies(response);
+        LobbyManager.Instance.LoadingScreenStatus(false);
     }
     
     void ClearLobbyContent()
@@ -103,10 +120,12 @@ public class LobbyUIScript : MonoBehaviour
 
     async void RefreshLobbies()
     {
+        LobbyManager.Instance.LoadingScreenStatus(true);
         ClearLobbyContent();
         Instantiate(lobbySearhingScrollViewPrefab, lobbyDisplayContent);
         QueryResponse response = await LobbyManager.Instance.SearchLobby();
         if(response != null) DisplayLobbies(response);
+        LobbyManager.Instance.LoadingScreenStatus(false);
     }
 
     async void LeaveLobby()
@@ -122,5 +141,17 @@ public class LobbyUIScript : MonoBehaviour
         lobbyUIPage.SetActive(true);
         startGame.gameObject.SetActive(false);
         Debug.Log("Joined Lobby!");
+    }
+
+    void ChangeTeams()
+    {
+        TeamManager.Instance.ChangeTeamForPlayerRpc(NetworkManager.Singleton.LocalClientId);
+        changeTeams.interactable = false;
+        Invoke(nameof(ChangeTeamsButtonTimeout), 2f);
+    }
+
+    void ChangeTeamsButtonTimeout()
+    {
+        changeTeams.interactable = true;
     }
 }

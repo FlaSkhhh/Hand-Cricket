@@ -25,9 +25,10 @@ public class LobbyPrefabScript : MonoBehaviour
 
     async void JoinLobby()
     {
+        LobbyManager.Instance.LoadingScreenStatus(true);
         bool result = await LobbyManager.Instance.JoinLobby(lobbyIdString);
 
         if (result) lobbyUIScript.JoinedLobby();
-
+        LobbyManager.Instance.LoadingScreenStatus(false);
     }
 }
