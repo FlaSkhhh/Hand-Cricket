@@ -1,13 +1,14 @@
-using System.Linq;
 using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using static UnityEngine.Rendering.DebugUI;
 
 public class CharacterSelect : MonoBehaviour
 {
     public GameObject characterPrefab;
+    [SerializeField] Button characterImage;
+    [SerializeField] GameObject customisationMenu;
+
     [SerializeField] Texture[] characterFaces;      //3 faces
     Material characterFaceMat;
     Material characterColourMat;
@@ -17,6 +18,8 @@ public class CharacterSelect : MonoBehaviour
     [SerializeField] TMP_Dropdown characterFaceSelect;     
     [SerializeField] Slider characterColourSelect;
 
+    [SerializeField] Image[] bgSprites;
+
     GameObject customisablePrefabClone;
 
     public static CharacterSelect instance;
@@ -24,14 +27,16 @@ public class CharacterSelect : MonoBehaviour
     void Awake()
     {
         instance = this;
+        characterImage.onClick.AddListener(CustomisationMenu);
         characterFaceSelect.onValueChanged.AddListener(FaceChanged);
         characterColourSelect.onValueChanged.AddListener(ColourChanged);
         characterAccessoriesSelect.onValueChanged.AddListener(AccessoryChanged);
+        customisationMenu.SetActive(false);
     }
 
     void Start()
     {
-        InstantiateCharacter();
+        InstantiateCustomisationCharacter();
 
         float[] uiValues = new float[3];
         if (PlayerPrefs.HasKey("CustomCharacter"))
@@ -56,20 +61,25 @@ public class CharacterSelect : MonoBehaviour
         characterAccessoriesSelect.value = (int)uiValues[2];
     }
 
-    void InstantiateCharacter()
+    void InstantiateCustomisationCharacter()
     {
-        GameObject guy = Instantiate(characterPrefab, new Vector3(Random.Range(-2,2), -5.5f, -4),Quaternion.Euler(0,90,0));
+        GameObject guy = Instantiate(characterPrefab, new Vector3(0,-10,0),Quaternion.Euler(0,180,0));
         CharacterCustomisationClass vals = guy.GetComponent<CharacterCustomiseHelper>().CharacterCustomisationGetter();
         //asign variables 
         characterFaceMat = vals.face;
         characterColourMat = vals.colour;
         accessoriesParent = vals.accessory;
-        customisablePrefabClone = guy;
+        customisablePrefabClone = guy;  
+        //remove shadows from customisation character
+        foreach(Transform child in accessoriesParent)
+        {
+            child.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
     }
-
+    //for lineup
     public GameObject SpawnPlayerCharacters(string key)
     {
-        GameObject guy = Instantiate(characterPrefab, new Vector3(Random.Range(-2, 2), -5.5f, -4), Quaternion.Euler(0, 90, 0));
+        GameObject guy = Instantiate(characterPrefab, new Vector3(Random.Range(-2, 2), -5.5f, Random.Range(0, -4)), Quaternion.Euler(0, 90, 0));
         CharacterCustomisationClass vals = guy.GetComponent<CharacterCustomiseHelper>().CharacterCustomisationGetter();
 
         float[] custom = GetCharacterFromValues(key);
@@ -115,6 +125,10 @@ public class CharacterSelect : MonoBehaviour
         PlayerPrefs.SetString("CustomCharacter", newKey);
 
         characterColourSelect.image.color = Color.HSVToRGB(value,1,1);
+        foreach(Image image in bgSprites)
+        {
+            image.color = Color.HSVToRGB(value, 0.75f, 0.75f);    //background image for selection of face and hat
+        }
         characterColourMat.color = Color.HSVToRGB(value, 1, 1);
     }
     
@@ -130,6 +144,18 @@ public class CharacterSelect : MonoBehaviour
             child.gameObject.SetActive(false);
         }
         if (value > 0) accessoriesParent.GetChild(value - 1).gameObject.SetActive(true);       //0 for no accessory
+    }
+
+    void CustomisationMenu()
+    {
+        if (customisationMenu.activeInHierarchy)
+        {
+            customisationMenu.SetActive(false);
+        }
+        else
+        {
+            customisationMenu.SetActive(true);
+        }
     }
 
     public void DestroyCustomisablePrefabClone()

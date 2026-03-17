@@ -13,6 +13,10 @@ public class AnimationEventHelper : MonoBehaviour
         gameUIScript.DisableRunSelectionPopup();
     }
 
+    public void DestroyGameObject()
+    {
+        Destroy(gameObject);
+    }
    /* void OnDisable()
     {
         gameObject.GetComponent<Animator>().Rebind();

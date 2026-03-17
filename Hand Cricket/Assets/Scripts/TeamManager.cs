@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Netcode;
@@ -14,10 +15,13 @@ public class TeamManager : NetworkBehaviour
     public NetworkVariable<FixedString32Bytes> teamBName;
 
     public Dictionary<ulong,string> playerNames = new Dictionary<ulong,string>();
-    public Dictionary<ulong, GameObject> playerCharacters = new();
+    public Dictionary<ulong,GameObject> playerCharacters = new();
+
+    [SerializeField] GameObject popupGO;
 
     bool isLocalPlayerTeamA;
     bool needsTeamLineupUpdate;
+    LobbyUIScript lobbyUIScript;
 
     void Awake()
     {
@@ -37,14 +41,17 @@ public class TeamManager : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         //CharacterSelect.instance.SpawnPlayerCharacters(PlayerPrefs.GetString("CustomCharacter").ToString());
-        CharacterSelect.instance.DestroyCustomisablePrefabClone();
+        lobbyUIScript = FindObjectsByType<LobbyUIScript>(FindObjectsSortMode.None)[0];  
         playerNames.Clear();
         playerCharacters.Clear();
 
         teamA_Ids.OnListChanged += OnTeamAListChanged;
         teamB_Ids.OnListChanged += OnTeamBListChanged;
+        teamAName.OnValueChanged += OnTeamANameChanged;
+        teamBName.OnValueChanged += OnTeamBNameChanged;
         if (!IsHost) 
         {
+            lobbyUIScript.TeamsNameUpdate();    //because host triggers the name change anyway
             FixedString32Bytes _ = LobbyManager.Instance.PlayerNameGetter() +","+ PlayerPrefs.GetString("CustomCharacter").ToString();
             SendNameToServerRpc(_);
             return; 
@@ -55,8 +62,7 @@ public class TeamManager : NetworkBehaviour
 
     void OnTeamAListChanged(NetworkListEvent<ulong> changeEvent)
     {
-        ulong cId = changeEvent.Value;
-
+        //redo all character lineup positions
         ChangeCharacterPositionForTeamLineup();
         /*switch (changeEvent.Type)
         {
@@ -73,9 +79,17 @@ public class TeamManager : NetworkBehaviour
     }
     void OnTeamBListChanged(NetworkListEvent<ulong> changeEvent)
     {
-        ulong cId = changeEvent.Value;
-
         ChangeCharacterPositionForTeamLineup();
+    }
+
+    void OnTeamANameChanged(FixedString32Bytes prev, FixedString32Bytes current)
+    {
+        lobbyUIScript.TeamsNameUpdate();
+    }
+
+    void OnTeamBNameChanged(FixedString32Bytes prev, FixedString32Bytes current)
+    {
+        lobbyUIScript.TeamsNameUpdate();
     }
 
     public void SetTeam(ulong cId)
@@ -148,9 +162,15 @@ public class TeamManager : NetworkBehaviour
     [Rpc(SendTo.SpecifiedInParams)]
     void SyncNamesToClientRpc(ulong[] ids, FixedString32Bytes[] names, RpcParams rpcParams = default)
     {
-        for(int i= 0; i<ids.Length; i++)
+        StartCoroutine(AddPlayersToList(ids, names));
+    }
+
+    IEnumerator AddPlayersToList(ulong[] ids, FixedString32Bytes[] names)
+    {
+        for (int i = 0; i < ids.Length; i++)
         {
             AddPlayerName(ids[i], names[i].ToString());
+            yield return null;
         }
         ChangeCharacterPositionForTeamLineup();
     }
@@ -161,17 +181,18 @@ public class TeamManager : NetworkBehaviour
         Debug.Log($"PLAYER {playerName} ADDED AS ID {cId}");
         GameObject character = CharacterSelect.instance.SpawnPlayerCharacters(playerName.Split(',')[1]);
         playerCharacters.Add(cId, character);
+        if (cId == NetworkManager.Singleton.LocalClientId) character.GetComponent<CharacterCustomiseHelper>().IsLocalPlayer();
     }
 
     [Rpc(SendTo.Server)]
     public void ChangeTeamForPlayerRpc(ulong cId)
     {
-        if(teamA_Ids.Contains(cId))
+        if(teamA_Ids.Contains(cId) && teamB_Ids.Count <= 5)
         {
             teamA_Ids.Remove(cId);
             if (!teamB_Ids.Contains(cId)) teamB_Ids.Add(cId);
         }
-        else
+        else if(teamB_Ids.Contains(cId) && teamA_Ids.Count <= 5)
         {
             teamB_Ids.Remove(cId);
             if (!teamA_Ids.Contains(cId)) teamA_Ids.Add(cId);
@@ -186,7 +207,7 @@ public class TeamManager : NetworkBehaviour
     void LineupUpdate()
     {
         LocalPlayerTeamASetter(teamA_Ids.Contains(NetworkManager.Singleton.LocalClientId));
-
+        lobbyUIScript.TeamsUIListUpdate();
         int counter = 0;
         Transform[] teamALineup;
         Transform[] teamBLineup;
@@ -219,7 +240,8 @@ public class TeamManager : NetworkBehaviour
     [Rpc(SendTo.ClientsAndHost)]
     public void TeamImbalanceSignalRpc()
     {
-        //set ui for team imbalance here so teams can be similar size
+        GameObject go = Instantiate(popupGO);
+        go.GetComponent<PopupScript>().PopupActivation("TEAM IMBALANCED", "MAKE SURE THE TEAMS ARE OF EQUAL STRENGTH!");
     }
 
 
@@ -240,6 +262,8 @@ public class TeamManager : NetworkBehaviour
         foreach(GameObject go in playerCharacters.Values) { Destroy(go); }
         teamA_Ids.OnListChanged -= OnTeamAListChanged;
         teamB_Ids.OnListChanged -= OnTeamBListChanged;
+        teamAName.OnValueChanged -= OnTeamANameChanged;
+        teamBName.OnValueChanged -= OnTeamBNameChanged;
     }
 
     public bool LocalPlayerTeamAGetter()

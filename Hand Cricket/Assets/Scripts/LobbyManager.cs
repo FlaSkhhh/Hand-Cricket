@@ -17,6 +17,7 @@ public class LobbyManager : MonoBehaviour
     public static LobbyManager Instance;
 
     [SerializeField] GameObject teamManagerPrefab;
+    [SerializeField] GameObject popupGO;
 
     GameObject loadingScreen;
     Transform[] teamALineups;
@@ -49,9 +50,9 @@ public class LobbyManager : MonoBehaviour
         await AuthenticationService.Instance.SignInAnonymouslyAsync();
 
         thisPlayerId = AuthenticationService.Instance.PlayerId;
-        playerName = "Playa_"+thisPlayerId.Substring(0,4);
-        PlayerSignedIn?.Invoke();       //for default name display on IF
-        LoadingScreenStatus(false);
+        if (!PlayerPrefs.HasKey("PlayerName")) playerName = "Playa" + thisPlayerId.Substring(0, 5);
+        else playerName = PlayerPrefs.GetString("PlayerName");
+        PlayerSignedIn?.Invoke();       //subscribed by UI script to get logged in name
     }
 
  
@@ -61,11 +62,13 @@ public class LobbyManager : MonoBehaviour
         if (TeamManager.Instance.CheckTeamImbalance())
         {
             Debug.Log("TEAM IMBALANCE");
+            //rpc method is called for UI popup
             return;
         }
         CancelInvoke(nameof(LobbyHeartbeat));
         NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
+        TeamManager.Instance.OnNetworkDespawn();
         NetworkManager.Singleton.SceneManager.LoadScene("Game Scene",LoadSceneMode.Single);
     }
   
@@ -111,6 +114,7 @@ public class LobbyManager : MonoBehaviour
         catch (LobbyServiceException ex)
         {
             Debug.LogError(ex);
+            PopupSetter("ERROR", ex.Message);
             return false;
         }
     }
@@ -124,6 +128,7 @@ public class LobbyManager : MonoBehaviour
         }
         catch (LobbyServiceException ex) { 
             Debug.LogError(ex);
+            PopupSetter("ERROR", ex.Message);
             return null;
         }
         
@@ -152,6 +157,7 @@ public class LobbyManager : MonoBehaviour
         }
         catch (LobbyServiceException ex) { 
             Debug.LogError(ex);
+            PopupSetter("ERROR", ex.Message);
             return false;
         }
     }
@@ -169,6 +175,7 @@ public class LobbyManager : MonoBehaviour
         }
         catch (LobbyServiceException ex) { 
             Debug.LogError(ex);
+            PopupSetter("ERROR", ex.Message);
             return false;
         }
     }
@@ -232,6 +239,7 @@ public class LobbyManager : MonoBehaviour
 
     public void PlayerNameSetter(string name) { 
         playerName = name;
+        PlayerPrefs.SetString("PlayerName", name);
     }
 
 
@@ -254,5 +262,11 @@ public class LobbyManager : MonoBehaviour
     public (Transform[], Transform[]) LineupPositionsGetter()
     {
         return (teamALineups, teamBLineups);
+    }
+
+    void PopupSetter(string headerT, string bodyT)
+    {
+        GameObject go = Instantiate(popupGO);
+        go.GetComponent<PopupScript>().PopupActivation(headerT, bodyT);
     }
 }
