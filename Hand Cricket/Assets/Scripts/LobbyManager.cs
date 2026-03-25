@@ -187,6 +187,7 @@ public class LobbyManager : MonoBehaviour
 
     void OnClientDisconnected(ulong cId)
     {
+        if (cId == NetworkManager.Singleton.LocalClientId) return;      //host cant remove himself as his network is already gone
         TeamManager.Instance.RemovePlayerNameRpc(cId);
     }
 

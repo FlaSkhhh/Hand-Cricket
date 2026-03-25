@@ -80,6 +80,7 @@ public class CharacterSelect : MonoBehaviour
     public GameObject SpawnPlayerCharacters(string key)
     {
         GameObject guy = Instantiate(characterPrefab, new Vector3(Random.Range(-2, 2), -5.5f, Random.Range(0, -4)), Quaternion.Euler(0, 90, 0));
+        guy.transform.localScale = 2 * Vector3.one;
         CharacterCustomisationClass vals = guy.GetComponent<CharacterCustomiseHelper>().CharacterCustomisationGetter();
 
         float[] custom = GetCharacterFromValues(key);

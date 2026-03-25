@@ -13,6 +13,7 @@ public class LobbyUIScript : MonoBehaviour
     [SerializeField] GameObject startUIPage;
     [SerializeField] GameObject lobbySearchUIPage;
     [SerializeField] GameObject lobbyUIPage;
+    [SerializeField] GameObject mainBench;
 
     [SerializeField] GameObject lobbySearhingScrollViewPrefab;
 
@@ -49,6 +50,7 @@ public class LobbyUIScript : MonoBehaviour
         Application.targetFrameRate = 61;
         startupLoadingAnimator.gameObject.SetActive(true);
         loadingScreen.SetActive(false);     //removing loading because new startup loading is used for signin 
+        mainBench.SetActive(true);
     }
 
     void Start()
@@ -60,7 +62,7 @@ public class LobbyUIScript : MonoBehaviour
         searchLobby.onClick.AddListener(SearchLobby);
         refreshLobby.onClick.AddListener(RefreshLobbies);
         startGame.onClick.AddListener(StartGameHost);
-        lobbySearchBack.onClick.AddListener(() => { lobbySearchUIPage.SetActive(false); startUIPage.SetActive(true); });
+        lobbySearchBack.onClick.AddListener(() => { lobbySearchUIPage.SetActive(false); startUIPage.SetActive(true); mainBench.SetActive(true); });
         lobbyBack.onClick.AddListener(LeaveLobby);
         nameField.onEndEdit.AddListener(NameChanged);
         changeTeams.onClick.AddListener(ChangeTeams);
@@ -82,6 +84,7 @@ public class LobbyUIScript : MonoBehaviour
         maxPlayers = 10;
         LobbyManager.Instance.LoadingScreenStatus(true);
         bool completion = await LobbyManager.Instance.CreateLobby(maxPlayers);
+        mainBench.SetActive(!completion);
 
         startUIPage.SetActive(!completion);
         lobbyUIPage.SetActive(completion);
@@ -97,6 +100,7 @@ public class LobbyUIScript : MonoBehaviour
         lobbySearchUIPage.SetActive(true);
         Instantiate(lobbySearhingScrollViewPrefab,lobbyDisplayContent);
         QueryResponse response = await LobbyManager.Instance.SearchLobby();
+        mainBench.SetActive(false);
         if (response != null) DisplayLobbies(response);
         LobbyManager.Instance.LoadingScreenStatus(false);
     }
@@ -152,9 +156,12 @@ public class LobbyUIScript : MonoBehaviour
 
     async void LeaveLobby()
     {
+        LobbyManager.Instance.LoadingScreenStatus(true);
         bool result = await LobbyManager.Instance.LeaveLobby();
         lobbyUIPage.SetActive(!result);
         startUIPage.SetActive(result);
+        mainBench.SetActive(result);
+        LobbyManager.Instance.LoadingScreenStatus(false);
     }
 
     public void JoinedLobby()
