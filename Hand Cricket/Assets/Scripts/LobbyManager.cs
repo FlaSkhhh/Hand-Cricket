@@ -46,8 +46,15 @@ public class LobbyManager : MonoBehaviour
 
     async void Start()
     {
-        await UnityServices.InitializeAsync();
-        await AuthenticationService.Instance.SignInAnonymouslyAsync();
+        try
+        {
+            await UnityServices.InitializeAsync();
+            await AuthenticationService.Instance.SignInAnonymouslyAsync();
+        }
+        catch (Exception ex) {
+            Debug.LogError(ex);
+            popupGO.GetComponent<PopupScript>().PopupActivation("Error!", "Could not sign in to the servers!");
+        }
 
         thisPlayerId = AuthenticationService.Instance.PlayerId;
         if (!PlayerPrefs.HasKey("PlayerName")) playerName = "Playa" + thisPlayerId.Substring(0, 5);

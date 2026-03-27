@@ -14,11 +14,13 @@ public class TeamManager : NetworkBehaviour
     public NetworkVariable<FixedString32Bytes> teamAName;
     public NetworkVariable<FixedString32Bytes> teamBName;
 
-    public Dictionary<ulong,string> playerNames = new Dictionary<ulong,string>();
-    public Dictionary<ulong,GameObject> playerCharacters = new();
+    public Dictionary<ulong,string> playerNames = new Dictionary<ulong,string>();       //player names are saved as "name,characterselectionvalues" 
+                                                                                        //                       where charvalues are faceIndex+accessoryIndex+hue
+    public Dictionary<ulong,GameObject> playerCharacters = new();                       
 
     [SerializeField] GameObject popupGO;
 
+    bool isTeamCaptain;
     bool isLocalPlayerTeamA;
     bool needsTeamLineupUpdate;
     LobbyUIScript lobbyUIScript;
@@ -58,6 +60,18 @@ public class TeamManager : NetworkBehaviour
         }
         teamAName.Value = "TMA";
         teamBName.Value = "TMB";
+    }
+
+    public void TeamNameChanged(string name)
+    {
+        TeamNameUpdateRpc(name, isLocalPlayerTeamA);
+    }
+
+    [Rpc(SendTo.Server)]
+    void TeamNameUpdateRpc(string name, bool teamA)
+    {
+        if(teamA) teamAName.Value = name;
+        else teamBName.Value = name;
     }
 
     void OnTeamAListChanged(NetworkListEvent<ulong> changeEvent)
@@ -208,6 +222,22 @@ public class TeamManager : NetworkBehaviour
     {
         LocalPlayerTeamASetter(teamA_Ids.Contains(NetworkManager.Singleton.LocalClientId));
         lobbyUIScript.TeamsUIListUpdate();
+
+        if (teamA_Ids.Count > 0 && teamA_Ids[0] == NetworkManager.LocalClientId)
+        {
+            //team A captain
+            lobbyUIScript.ChangeTeamNameIFStatus(true, true);
+        }
+        else if(teamB_Ids.Count >0 && teamB_Ids[0] == NetworkManager.LocalClientId)
+        {
+            //team B captain
+            lobbyUIScript.ChangeTeamNameIFStatus(true, false);
+        }
+        else
+        {
+            lobbyUIScript.ChangeTeamNameIFStatus(false, false);
+        }
+
         int counter = 0;
         Transform[] teamALineup;
         Transform[] teamBLineup;
@@ -215,7 +245,7 @@ public class TeamManager : NetworkBehaviour
         (teamALineup, teamBLineup) = LobbyManager.Instance.LineupPositionsGetter();
         foreach (ulong cId in teamA_Ids)
         {
-            if (!playerCharacters.ContainsKey(cId)) continue;
+            if (!playerCharacters.ContainsKey(cId)) continue;       //continue if player characters doesnt have user added yet
             playerCharacters[cId].GetComponent<CharacterCustomiseHelper>().MoveToTeamLineup(teamALineup[counter].position);
             counter++;
         }
@@ -266,6 +296,10 @@ public class TeamManager : NetworkBehaviour
         teamBName.OnValueChanged -= OnTeamBNameChanged;
     }
 
+    /// <summary>
+    /// Returns true if local player is in team A
+    /// </summary>
+    /// <returns></returns>
     public bool LocalPlayerTeamAGetter()
     {
         return isLocalPlayerTeamA;

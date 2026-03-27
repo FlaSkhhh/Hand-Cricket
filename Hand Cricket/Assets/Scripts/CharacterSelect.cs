@@ -102,7 +102,6 @@ public class CharacterSelect : MonoBehaviour
 
         face = int.Parse(key[0].ToString());
         accessory = int.Parse(key[1].ToString());
-        int length = key.Length;
         hue = float.Parse(key.Substring(2));
 
         return new float[] { face, hue/360f, accessory };
@@ -157,6 +156,11 @@ public class CharacterSelect : MonoBehaviour
         {
             customisationMenu.SetActive(true);
         }
+    }
+
+    public void DisableCustomisableWindow()
+    {
+        customisationMenu.SetActive(false);
     }
 
     public void DestroyCustomisablePrefabClone()
