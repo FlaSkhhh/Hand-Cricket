@@ -1,6 +1,7 @@
 using System.Text;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class CharacterSelect : MonoBehaviour
@@ -26,7 +27,16 @@ public class CharacterSelect : MonoBehaviour
 
     void Awake()
     {
-        instance = this;
+        if(instance == null)
+        {
+            instance = this;
+        }
+        else
+        {
+            Destroy(instance);
+            instance = this;
+        }
+        DontDestroyOnLoad(gameObject);
         characterImage.onClick.AddListener(CustomisationMenu);
         characterFaceSelect.onValueChanged.AddListener(FaceChanged);
         characterColourSelect.onValueChanged.AddListener(ColourChanged);
@@ -94,6 +104,23 @@ public class CharacterSelect : MonoBehaviour
         return guy;
     }
 
+    public GameObject SpawnPlayerCharactersGameScene(string key) 
+    {
+        GameObject guy = Instantiate(characterPrefab, new Vector3(Random.Range(-2, 2), -5.5f, Random.Range(0, -4)), Quaternion.Euler(0, 90, 0));
+        guy.transform.localScale = 2 * Vector3.one;
+        CharacterCustomisationClass vals = guy.GetComponent<CharacterCustomiseHelper>().CharacterCustomisationGetter();
+
+        float[] custom = GetCharacterFromValues(key);
+        vals.face.mainTexture = characterFaces[(int)custom[0]];
+        vals.colour.color = Color.HSVToRGB(custom[1], 1, 1);
+        foreach (Transform child in vals.accessory)
+        {
+            child.gameObject.SetActive(false);
+        }
+        if ((int)custom[2] > 0) vals.accessory.GetChild((int)custom[2] - 1).gameObject.SetActive(true);       //0 for no accessory
+        return guy;
+    }
+
     float[] GetCharacterFromValues(string key)
     {
         int face = 0;
@@ -120,16 +147,20 @@ public class CharacterSelect : MonoBehaviour
     
     void ColourChanged(float value)
     {
-        string key = PlayerPrefs.GetString("CustomCharacter").Substring(0,2);
-        string newKey = key + Mathf.CeilToInt(value*360).ToString();
-        PlayerPrefs.SetString("CustomCharacter", newKey);
-
         characterColourSelect.image.color = Color.HSVToRGB(value,1,1);
         foreach(Image image in bgSprites)
         {
             image.color = Color.HSVToRGB(value, 0.75f, 0.75f);    //background image for selection of face and hat
         }
         characterColourMat.color = Color.HSVToRGB(value, 1, 1);
+    }
+
+    //because changing pref with onvaluechange update is not optimal
+    public void SaveColourChangeToPref(BaseEventData data)
+    {
+        string key = PlayerPrefs.GetString("CustomCharacter").Substring(0, 2);
+        string newKey = key + Mathf.CeilToInt(characterColourSelect.value * 360).ToString();
+        PlayerPrefs.SetString("CustomCharacter", newKey);
     }
     
     void AccessoryChanged(int value)

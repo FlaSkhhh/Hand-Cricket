@@ -18,6 +18,9 @@ public class GameManager : NetworkBehaviour
 
     int wickets = 0;
 
+    [SerializeField] Animator teamAHand;
+    [SerializeField] Animator teamBHand;
+    //batsman and bowler index as team A is batting always
     int teamA_index;
     int teamB_index;
 
@@ -83,29 +86,22 @@ public class GameManager : NetworkBehaviour
         StartCoroutine(OverResultDisplay(batsmanRun,bowlerRun));
     }
 
+
+    //main coroutine that handles the over gameplay with user inputs
     IEnumerator OverResultDisplay(int[] batsmanRun, int[] bowlerRun)
     {
-        //bool isBatsmanTeam = currentMatchState == MatchState.Inning2 ? TeamManager.Instance.teamB_Ids.Contains(NetworkManager.LocalClientId) : TeamManager.Instance.teamA_Ids.Contains(NetworkManager.LocalClientId);
-
         int _ = 0;      //discardable int for teamindex holder
         for (int i = 0; i < batsmanRun.Length; i++)
         {
             currentBatsmanBalls++;  //add ball each time
             gameUIScript.SetBatsmanStats(currentBatsmanRuns,currentBatsmanBalls);
-            //change this as we need to show both balls selected somewhere in UI
-            /*if (isBatsman)
-            {
-                gameUIScript.SetOpponentRun(bowlerRun[i]);
-
-            }
-            else
-            {
-                gameUIScript.SetOpponentRun(batsmanRun[i]);
-            }*/
-
+            //hand animations
+            //reset first then use the animation
+            HandAnimationsSetter(-1, -1);
+            HandAnimationsSetter(batsmanRun[i], bowlerRun[i]);
+            //if wicket
             if (batsmanRun[i] == bowlerRun[i])
             {
-                //out
                 wickets++;
                 gameUIScript.SetMatchUI("BATSMAN IS OUT AT " + totalRuns.ToString() + " RUNS", totalRuns.ToString(), wickets.ToString());
 
@@ -128,7 +124,7 @@ public class GameManager : NetworkBehaviour
                     {
                         targetRuns = totalRuns + 1;
                         currentMatchState = MatchState.Inning2;
-                        yield return new WaitForSeconds(1);
+                        yield return new WaitForSeconds(3);
                         gameUIScript.SetTargetRuns(targetRuns);
                         ResetInning();      //state should be changed to inning 2 before calling this
                         yield break;
@@ -145,7 +141,7 @@ public class GameManager : NetworkBehaviour
                     {
                         //winner decided here based on target runs and total runs as team 
                         MatchWinnerCheck();
-                        yield return new WaitForSeconds(1);
+                        yield return new WaitForSeconds(3);
                         yield break;
                     }
                     else
@@ -183,15 +179,17 @@ public class GameManager : NetworkBehaviour
                     if (totalRuns >= targetRuns)
                     {
                         MatchWinnerCheck();
-                        yield return new WaitForSeconds(1);
+                        yield return new WaitForSeconds(2);
                         yield break;
                     }
                 }
             }
 
-            yield return new WaitForSeconds(1f);
+            yield return new WaitForSeconds(3f);
         }
 
+
+        //after over is complete/ cut short by wicket
         if (currentMatchState == MatchState.Inning1) 
         {
             bowlingTeamStats[teamB_index].oversCompleted++;     //over end/wicket fall bowler change stats
@@ -204,8 +202,10 @@ public class GameManager : NetworkBehaviour
             _ = teamA_index;
             teamA_index = teamA_index >= TeamManager.Instance.teamA_Ids.Count - 1 ? 0 : teamA_index + 1; 
         }
+        //
         gameUIScript.SetBowlerStats(bowlingTeamStats[_].runsScoredAgainst, bowlingTeamStats[_].oversCompleted.ToString(), bowlingTeamStats[_].wicketsTaken);
 
+        //reset gameplay loop
         Invoke(nameof(ResetRunSelection), 2f);
     }
 
@@ -255,9 +255,12 @@ public class GameManager : NetworkBehaviour
         ResetRunSelection();
         gameUIScript.SetMatchUI("", totalRuns.ToString(), wickets.ToString());
         gameUIScript.SetOverText(false, true, -1);
+
+        //REMOVING THIS BECAUSE TEAMS DONT CHANGE SEATS AFTER INNINGS SO NO NEED TO CHANGE UI POSITIONS
         gameUIScript.TeamSideSet(currentMatchState == MatchState.Inning2 ? TeamManager.Instance.teamB_Ids.Contains(NetworkManager.LocalClientId) : TeamManager.Instance.teamA_Ids.Contains(NetworkManager.LocalClientId));
     }
-    
+
+    bool skipFirstChangeSeatCall;
     void ResetRunSelection()
     {
         batsmanRun = null;
@@ -265,6 +268,10 @@ public class GameManager : NetworkBehaviour
         string batsmanName = "Batsman";
         string bowlerName = "Bowler";
         int _ = 0;
+
+        //reset hand animations
+        HandAnimationsSetter(-1, -1);
+
         //display next players names and stats
         if (currentMatchState == MatchState.Inning1)
         {
@@ -278,10 +285,13 @@ public class GameManager : NetworkBehaviour
             batsmanName = TeamManager.Instance.playerNames[TeamManager.Instance.teamB_Ids[teamB_index]];
             bowlerName = TeamManager.Instance.playerNames[TeamManager.Instance.teamA_Ids[teamA_index]];
         }
-        gameUIScript.SetBatsmanName(batsmanName);
-        gameUIScript.SetBowlerName(bowlerName);
+        gameUIScript.SetBatsmanName(batsmanName.Split(',')[0]);
+        gameUIScript.SetBowlerName(bowlerName.Split(',')[0]);
 
         gameUIScript.SetBowlerStats(bowlingTeamStats[_].runsScoredAgainst, bowlingTeamStats[_].oversCompleted.ToString(), bowlingTeamStats[_].wicketsTaken);
+
+        if(skipFirstChangeSeatCall) gameUIScript.ChangePlayerSeats();       //need to skip first call as when game starts, UI script handles it with spawning chars
+        skipFirstChangeSeatCall = true;
 
         if (TeamManager.Instance.teamA_Ids[teamA_index] == NetworkManager.LocalClientId || TeamManager.Instance.teamB_Ids[teamB_index] == NetworkManager.LocalClientId)
         {
@@ -291,6 +301,49 @@ public class GameManager : NetworkBehaviour
         {
             gameUIScript.DisableUI();
         }
+    }
+
+    void HandAnimationsSetter(int batsmanRun, int bowlerRun)
+    {
+        string batsmanHandString = HandAnimationStringGetter(batsmanRun);
+        string bowlerHandString = HandAnimationStringGetter(bowlerRun);
+
+        if (currentMatchState == MatchState.Inning1)
+        {
+            teamAHand.Play(batsmanHandString);
+            teamBHand.Play(bowlerHandString);
+        }
+        else
+        {
+            teamAHand.Play(bowlerHandString);
+            teamBHand.Play(batsmanHandString);
+        }
+    }
+
+    string HandAnimationStringGetter(int runIndex)
+    {
+        switch (runIndex) 
+        {
+            case 1:
+                return "1";
+            case 2:
+                return "2";
+            case 3:
+                return "3";
+            case 4:
+                return "4";
+            case 5:
+                return "5";
+            case 6:
+                return "6";
+            default:
+                return "D";
+        }
+    }
+
+    public (int,int) CurrentActivePlayersGetter()
+    {
+        return (teamA_index, teamB_index);
     }
 }
 

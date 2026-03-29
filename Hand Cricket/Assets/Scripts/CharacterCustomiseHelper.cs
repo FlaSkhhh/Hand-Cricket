@@ -41,7 +41,7 @@ public class CharacterCustomiseHelper : MonoBehaviour
 
     IEnumerator MovementCoroutine(Vector3 pos)
     {
-        transform.rotation = Quaternion.LookRotation(pos-transform.position);
+        transform.rotation = Quaternion.LookRotation(pos - transform.position);
         animator.ResetTrigger("idle");
         animator.ResetTrigger("run");
         animator.SetTrigger("run");

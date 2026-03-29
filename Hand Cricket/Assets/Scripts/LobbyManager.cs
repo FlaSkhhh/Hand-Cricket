@@ -53,7 +53,7 @@ public class LobbyManager : MonoBehaviour
         }
         catch (Exception ex) {
             Debug.LogError(ex);
-            popupGO.GetComponent<PopupScript>().PopupActivation("Error!", "Could not sign in to the servers!");
+            PopupSetter("Error!", "Could not sign in to the servers!");
         }
 
         thisPlayerId = AuthenticationService.Instance.PlayerId;
@@ -64,8 +64,14 @@ public class LobbyManager : MonoBehaviour
 
  
     //called by host to start the game after lobby is filled
-    public void StartGame()
+    public async Task StartGame()
     {
+        if(TeamManager.Instance.teamA_Ids.Count <= 0 || TeamManager.Instance.teamB_Ids.Count <= 0)
+        {
+            Debug.Log("EMPTY TEAM");
+            PopupSetter("Insufficient Players!", "Cannot start a game with empty team.");
+            return;
+        }
         if (TeamManager.Instance.CheckTeamImbalance())
         {
             Debug.Log("TEAM IMBALANCE");
@@ -76,6 +82,9 @@ public class LobbyManager : MonoBehaviour
         NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
         TeamManager.Instance.OnNetworkDespawn();
+        await Task.Yield();     //to wait one frame for despawn methond to remove all subs
+        if(UnityEngine.Random.value < 0.5f) TeamManager.Instance.SwapTeams();
+        await Task.Yield();
         NetworkManager.Singleton.SceneManager.LoadScene("Game Scene",LoadSceneMode.Single);
     }
   

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
@@ -20,7 +21,6 @@ public class TeamManager : NetworkBehaviour
 
     [SerializeField] GameObject popupGO;
 
-    bool isTeamCaptain;
     bool isLocalPlayerTeamA;
     bool needsTeamLineupUpdate;
     LobbyUIScript lobbyUIScript;
@@ -53,7 +53,7 @@ public class TeamManager : NetworkBehaviour
         teamBName.OnValueChanged += OnTeamBNameChanged;
         if (!IsHost) 
         {
-            lobbyUIScript.TeamsNameUpdate();    //because host triggers the name change anyway
+            //lobbyUIScript.TeamsNameUpdate();    //because host triggers the name change anyway
             FixedString32Bytes _ = LobbyManager.Instance.PlayerNameGetter() +","+ PlayerPrefs.GetString("CustomCharacter").ToString();
             SendNameToServerRpc(_);
             return; 
@@ -62,6 +62,7 @@ public class TeamManager : NetworkBehaviour
         teamBName.Value = "TMB";
     }
 
+    #region Lobby Scene Stuff
     public void TeamNameChanged(string name)
     {
         TeamNameUpdateRpc(name, isLocalPlayerTeamA);
@@ -98,12 +99,12 @@ public class TeamManager : NetworkBehaviour
 
     void OnTeamANameChanged(FixedString32Bytes prev, FixedString32Bytes current)
     {
-        lobbyUIScript.TeamsNameUpdate();
+        lobbyUIScript.TeamsNameUpdate(true);
     }
 
     void OnTeamBNameChanged(FixedString32Bytes prev, FixedString32Bytes current)
     {
-        lobbyUIScript.TeamsNameUpdate();
+        lobbyUIScript.TeamsNameUpdate(false);
     }
 
     public void SetTeam(ulong cId)
@@ -287,6 +288,7 @@ public class TeamManager : NetworkBehaviour
         playerNames.Remove(cid);
     }
 
+    //is called when game starts to avoid the UI scene carryover subs
     public override void OnNetworkDespawn()
     {
         foreach(GameObject go in playerCharacters.Values) { Destroy(go); }
@@ -295,6 +297,7 @@ public class TeamManager : NetworkBehaviour
         teamAName.OnValueChanged -= OnTeamANameChanged;
         teamBName.OnValueChanged -= OnTeamBNameChanged;
     }
+
 
     /// <summary>
     /// Returns true if local player is in team A
@@ -309,7 +312,42 @@ public class TeamManager : NetworkBehaviour
     {
         isLocalPlayerTeamA = val;
     }
+    #endregion
 
+    #region Game Scene Stuff
+
+    public async Task SpawnPlayerCharactersInGameScene()
+    {
+        foreach (GameObject character in playerCharacters.Values)
+        {
+            Destroy(character);
+        }
+        playerCharacters.Clear();
+        int counter = 0;
+        foreach (ulong cid in teamA_Ids)
+        {
+            if (playerNames.TryGetValue(cid, out string playerData)) { 
+                GameObject guy = CharacterSelect.instance.SpawnPlayerCharactersGameScene(playerData.Split(',')[1]);
+                playerCharacters.Add(cid, guy);
+                counter++;
+                await Task.Yield(); 
+            }
+        }
+        counter = 0;
+        foreach(ulong cid in teamB_Ids)
+        {
+            if (playerNames.TryGetValue(cid, out string playerDataB))
+            {
+                GameObject guy = CharacterSelect.instance.SpawnPlayerCharactersGameScene(playerDataB.Split(',')[1]);
+                playerCharacters.Add(cid, guy);
+                counter++;
+                await Task.Yield();
+            }
+        }
+        playerCharacters[NetworkManager.LocalClientId].GetComponent<CharacterCustomiseHelper>().IsLocalPlayer();
+    }
+
+    #endregion
 
     void Update()
     {

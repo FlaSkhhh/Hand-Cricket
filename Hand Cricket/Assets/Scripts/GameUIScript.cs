@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -5,6 +6,12 @@ using UnityEngine.UI;
 public class GameUIScript : MonoBehaviour
 {
     [SerializeField] GameManager gameManager;
+    [Header("Teams Stuff")]
+    [SerializeField] Transform teamALineups;
+    [SerializeField] Transform teamBLineups;
+    [SerializeField] Transform mainGameTable;
+    [SerializeField] Transform teamAHotSeat;
+    [SerializeField] Transform teamBHotSeat;
 
     [Header("GameObjects")]
     [SerializeField] GameObject runSelectionParent;
@@ -63,6 +70,61 @@ public class GameUIScript : MonoBehaviour
         targetRunsText.text = "1st INNING";
         teamNames.text = TeamManager.Instance.teamBName.Value.ToString() + " vs " + "<size=150%>" + TeamManager.Instance.teamAName.Value.ToString() + "</size>";  
         overNumber = 0;
+        SpawnPlayerCharactersToSeat();      //only spawn once as teams dont change so players will sit on same side but UI will change
+    }
+
+    async void SpawnPlayerCharactersToSeat()
+    {
+        await TeamManager.Instance.SpawnPlayerCharactersInGameScene();
+        ChangePlayerSeats();
+    }
+
+    public void ChangePlayerSeats()
+    {
+        int counter = 0;        //counter for 4 chairs for supporting guys
+        (int teamAIndex, int teamBIndex) = gameManager.CurrentActivePlayersGetter();
+        for (int i = 0; i < TeamManager.Instance.teamA_Ids.Count; i++)
+        {
+            if (i == teamAIndex)        //current player on table
+            {
+                Transform pos = TeamManager.Instance.playerCharacters[TeamManager.Instance.teamA_Ids[i]].transform;
+                pos.parent = teamAHotSeat;
+                pos.localPosition = Vector3.zero;
+                pos.localRotation = Quaternion.Euler(Vector3.zero);
+                pos.GetComponent<Animator>().SetTrigger("sit");
+            }
+            else
+            {
+                Transform pos = TeamManager.Instance.playerCharacters[TeamManager.Instance.teamA_Ids[i]].transform;
+                pos.parent = teamALineups.GetChild(counter);
+                pos.localPosition = new Vector3(0.1f, 0.2f, 0);
+                pos.rotation = Quaternion.LookRotation(Vector3.Normalize(mainGameTable.position - pos.position));
+                pos.GetComponent<Animator>().SetTrigger("sit");
+                counter++;
+            }
+            //adding a bit of offset to get butt on chair
+        }
+        counter = 0;
+        for (int i = 0; i < TeamManager.Instance.teamB_Ids.Count; i++)
+        {
+            if (i == teamBIndex) 
+            {
+                Transform bos = TeamManager.Instance.playerCharacters[TeamManager.Instance.teamB_Ids[i]].transform;
+                bos.parent = teamBHotSeat;
+                bos.localPosition = Vector3.zero;
+                bos.localRotation = Quaternion.Euler(Vector3.zero);
+                bos.GetComponent<Animator>().SetTrigger("sit");
+            }
+            else
+            {
+                Transform bos = TeamManager.Instance.playerCharacters[TeamManager.Instance.teamB_Ids[i]].transform;
+                bos.parent = teamBLineups.GetChild(counter);
+                bos.localPosition = new Vector3(-0.375f, 0.2f, 0);
+                bos.rotation = Quaternion.LookRotation(Vector3.Normalize(mainGameTable.position - bos.position));
+                bos.GetComponent<Animator>().SetTrigger("sit");
+                counter++;
+            }
+        }
     }
 
     public void TeamSideSet(bool isBatting)

@@ -1,15 +1,15 @@
 using TMPro;
+using System;
 using Unity.Netcode;
 using Unity.Services.Lobbies.Models;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using WebSocketSharp;
 
 public class LobbyUIScript : MonoBehaviour
 {
     [SerializeField] LobbyPrefabScript lobbyPrefab;
-
+    [Header("UI Pages")]
     [SerializeField] GameObject startUIPage;
     [SerializeField] GameObject playUIPage;
     [SerializeField] GameObject lobbySearchUIPage;
@@ -17,14 +17,14 @@ public class LobbyUIScript : MonoBehaviour
     [SerializeField] GameObject mainBench;
 
     [SerializeField] GameObject lobbySearhingScrollViewPrefab;
-
+    [Header("Buttons")]
     [SerializeField] Button playButton;
     [SerializeField] Button createLobby;
     [SerializeField] Button searchLobby;
     [SerializeField] Button refreshLobby;
     [SerializeField] Button startGame;
     [SerializeField] Button changeTeams;
-
+    [Header("Back Buttons")]
     [SerializeField] Button startPageBack;
     [SerializeField] Button lobbySearchBack;
     [SerializeField] Button lobbyBack;
@@ -32,7 +32,7 @@ public class LobbyUIScript : MonoBehaviour
     [SerializeField] Transform lobbyDisplayContent;
 
     [SerializeField] TMP_InputField nameField;
-
+    [Header("Teams Stuff")]
     [SerializeField] Transform[] teamALineups; 
     [SerializeField] Transform[] teamBLineups;
     [SerializeField] TMP_InputField teamAName;
@@ -43,6 +43,7 @@ public class LobbyUIScript : MonoBehaviour
     [SerializeField] GameObject teamBPrefab;
     [SerializeField] GameObject captainChangeTeamTipText;
 
+    [Header("Loading and Popup")]
     [SerializeField] Animator startupLoadingAnimator;
     [SerializeField] GameObject loadingScreen;
 
@@ -56,14 +57,14 @@ public class LobbyUIScript : MonoBehaviour
         mainCamera = Camera.main;
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
         startupLoadingAnimator.gameObject.SetActive(true);
-        loadingScreen.SetActive(false);     //removing loading because new startup loading is used for signin 
-        mainBench.SetActive(true);
+        loadingScreen.SetActive(false);     //removing regular loading because new startup splash screen type image is used for signin loading
     }
 
     void Start()
     {
         mainCamera.transform.rotation = Quaternion.Euler(38.2f, 0, 0);
         playUIPage.SetActive(true);
+        mainBench.SetActive(true);
         startUIPage.SetActive(false);
         lobbySearchUIPage.SetActive(false);
         lobbyUIPage.SetActive(false);
@@ -169,7 +170,7 @@ public class LobbyUIScript : MonoBehaviour
 
     void NameChanged(string name)
     {
-        if (!name.IsNullOrEmpty())
+        if (!String.IsNullOrEmpty(name))
         {
             LobbyManager.Instance.PlayerNameSetter(name);
         }
@@ -186,7 +187,7 @@ public class LobbyUIScript : MonoBehaviour
 
     void StartGameHost()
     {
-        LobbyManager.Instance.StartGame();
+        _ = LobbyManager.Instance.StartGame();
     }
 
     async void RefreshLobbies()
@@ -289,10 +290,10 @@ public class LobbyUIScript : MonoBehaviour
         }
     }
 
-    public void TeamsNameUpdate()
+    public void TeamsNameUpdate(bool teamA)
     {
-        teamAName.text = TeamManager.Instance.teamAName.Value.ToString();
-        teamBName.text = TeamManager.Instance.teamBName.Value.ToString();
+        if(teamA)teamAName.text = TeamManager.Instance.teamAName.Value.ToString();
+        else teamBName.text = TeamManager.Instance.teamBName.Value.ToString();
     }
 
     void ChangeTeamsButtonTimeout()
