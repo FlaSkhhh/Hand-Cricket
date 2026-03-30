@@ -288,7 +288,7 @@ public class TeamManager : NetworkBehaviour
         playerNames.Remove(cid);
     }
 
-    //is called when game starts to avoid the UI scene carryover subs
+    //called when game starts to avoid the UI scene carryover subs also called when relay stops in lobby
     public override void OnNetworkDespawn()
     {
         foreach(GameObject go in playerCharacters.Values) { Destroy(go); }

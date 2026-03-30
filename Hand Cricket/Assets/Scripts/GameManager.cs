@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -20,6 +21,8 @@ public class GameManager : NetworkBehaviour
 
     [SerializeField] Animator teamAHand;
     [SerializeField] Animator teamBHand;
+    [SerializeField] TextMeshPro handAText;
+    [SerializeField] TextMeshPro handBText;
     //batsman and bowler index as team A is batting always
     int teamA_index;
     int teamB_index;
@@ -98,7 +101,9 @@ public class GameManager : NetworkBehaviour
             //hand animations
             //reset first then use the animation
             HandAnimationsSetter(-1, -1);
+            yield return null;
             HandAnimationsSetter(batsmanRun[i], bowlerRun[i]);
+            yield return new WaitForSeconds(1f);        //wait 1 sec for animation to finish
             //if wicket
             if (batsmanRun[i] == bowlerRun[i])
             {
@@ -213,13 +218,17 @@ public class GameManager : NetworkBehaviour
     {
         currentMatchState = MatchState.MatchOver;
         string winnerTeam;
-        if (totalRuns >= targetRuns)
+        if (totalRuns > targetRuns)
         {
             winnerTeam = "Team B";
         }
-        else
+        else if(totalRuns < targetRuns)
         {
             winnerTeam = "Team A";
+        }
+        else
+        {
+            winnerTeam = "No one";
         }
         gameUIScript.SetMatchUI(winnerTeam + " has won the match!", totalRuns.ToString(), wickets.ToString());
     }
@@ -307,16 +316,20 @@ public class GameManager : NetworkBehaviour
     {
         string batsmanHandString = HandAnimationStringGetter(batsmanRun);
         string bowlerHandString = HandAnimationStringGetter(bowlerRun);
-
+        
         if (currentMatchState == MatchState.Inning1)
         {
             teamAHand.Play(batsmanHandString);
             teamBHand.Play(bowlerHandString);
+            handAText.text = batsmanHandString;
+            handBText.text = bowlerHandString;
         }
         else
         {
             teamAHand.Play(bowlerHandString);
             teamBHand.Play(batsmanHandString);
+            handAText.text = bowlerHandString;
+            handBText.text = batsmanHandString;
         }
     }
 

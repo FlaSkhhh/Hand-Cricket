@@ -12,6 +12,7 @@ public class GameUIScript : MonoBehaviour
     [SerializeField] Transform mainGameTable;
     [SerializeField] Transform teamAHotSeat;
     [SerializeField] Transform teamBHotSeat;
+    [SerializeField] TextMeshPro boardText;
 
     [Header("GameObjects")]
     [SerializeField] GameObject runSelectionParent;
@@ -34,8 +35,8 @@ public class GameUIScript : MonoBehaviour
     [SerializeField] TextMeshProUGUI currentBallStatusText;
     [SerializeField] TextMeshProUGUI bowlerStatsText;
     [SerializeField] TextMeshProUGUI bowlerNameText;
-    [SerializeField] TextMeshProUGUI batsmaNameText;
-    [SerializeField] TextMeshProUGUI batsmaStatsText;
+    [SerializeField] TextMeshProUGUI batsmanNameText;
+    [SerializeField] TextMeshProUGUI batsmanStatsText;
 
     [Header("Animations")]
     [SerializeField] Animator runSelectionBarAnimator;
@@ -68,7 +69,8 @@ public class GameUIScript : MonoBehaviour
         selectedButtonImage = runButtons[0].transform.parent.GetComponent<Image>();
         selectionButtonsPopup.SetActive(false);
         targetRunsText.text = "1st INNING";
-        teamNames.text = TeamManager.Instance.teamBName.Value.ToString() + " vs " + "<size=150%>" + TeamManager.Instance.teamAName.Value.ToString() + "</size>";  
+        teamNames.text = TeamManager.Instance.teamBName.Value.ToString() + " vs " + "<size=150%>" + TeamManager.Instance.teamAName.Value.ToString() + "</size>";
+        boardText.text = TeamManager.Instance.teamBName.Value.ToString() + " vs " + TeamManager.Instance.teamAName.Value.ToString();
         overNumber = 0;
         SpawnPlayerCharactersToSeat();      //only spawn once as teams dont change so players will sit on same side but UI will change
     }
@@ -218,11 +220,6 @@ public class GameUIScript : MonoBehaviour
         //submitRun.gameObject.SetActive(false);
     }
 
-    public void SetOpponentRun(int i)
-    {
-        //opponentSelectedRun.text = i.ToString();
-    }
-
     public void SetMatchUI(string status, string total, string wickets)
     {
         currentBallStatusText.text = status;
@@ -252,12 +249,12 @@ public class GameUIScript : MonoBehaviour
 
     public void SetBatsmanName(string name)
     {
-        batsmaNameText.text = name;
+        batsmanNameText.text = name;
     }
 
     public void SetBatsmanStats(int runs, int balls)
     {
-        batsmaStatsText.text = runs.ToString() + "  " + "<size=70%>"+balls.ToString()+"</size>";
+        batsmanStatsText.text = runs.ToString() + "  " + "<size=70%>"+balls.ToString()+"</size>";
     }
 
     public void SetBowlerName(string name)
@@ -289,7 +286,6 @@ public class GameUIScript : MonoBehaviour
         {
             butt.image.sprite = runDiesSprites[0];
         }
-        //opponentSelectedRun.text = "-";
         submitRun.gameObject.SetActive(true);
         runSelectionParent.SetActive(true);
         currentBallStatusText.text = " ";
@@ -299,5 +295,6 @@ public class GameUIScript : MonoBehaviour
     {
         runSelectionParent.SetActive(false);
         submitRun.gameObject.SetActive(false);
+        currentBallStatusText.text = " ";
     }
 }

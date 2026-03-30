@@ -1,5 +1,3 @@
 ﻿<Solution>
-  <Project Path="IngameDebugConsole.Runtime.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
-  <Project Path="IngameDebugConsole.Editor.csproj" />
 </Solution>

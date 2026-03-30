@@ -61,15 +61,14 @@ public class LobbyManager : MonoBehaviour
         else playerName = PlayerPrefs.GetString("PlayerName");
         PlayerSignedIn?.Invoke();       //subscribed by UI script to get logged in name
     }
-
  
     //called by host to start the game after lobby is filled
     public async Task StartGame()
     {
-        if(TeamManager.Instance.teamA_Ids.Count <= 0 || TeamManager.Instance.teamB_Ids.Count <= 0)
+        if(TeamManager.Instance.teamA_Ids.Count + TeamManager.Instance.teamB_Ids.Count <= 1)
         {
             Debug.Log("EMPTY TEAM");
-            PopupSetter("Insufficient Players!", "Cannot start a game with empty team.");
+            PopupSetter("Insufficient Players!", "Cannot start a game with less than 2 players.");
             return;
         }
         if (TeamManager.Instance.CheckTeamImbalance())
