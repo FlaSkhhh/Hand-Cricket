@@ -8503,7 +8503,7 @@ MonoBehaviour:
   m_Options:
     m_Options:
     - m_Text: 
-      m_Image: {fileID: 21300120, guid: 1eaee135ce037439d925cee5e41ce026, type: 3}
+      m_Image: {fileID: 21300000, guid: c8513e3b46124b64dba060720fae0d13, type: 3}
       m_Color: {r: 1, g: 1, b: 1, a: 1}
     - m_Text: 
       m_Image: {fileID: 1100238623, guid: dc85c9221dbe6e346afd5d668414d770, type: 3}

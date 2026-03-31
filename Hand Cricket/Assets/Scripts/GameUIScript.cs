@@ -1,5 +1,5 @@
-using System.Threading.Tasks;
 using TMPro;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,7 +17,9 @@ public class GameUIScript : MonoBehaviour
     [Header("GameObjects")]
     [SerializeField] GameObject runSelectionParent;
     [SerializeField] GameObject runSelectionGroupGO;
+    [SerializeField] GameObject localPlayerStatusGO;
     [SerializeField] GameObject selectionButtonsPopup;
+    [SerializeField] GameObject loadingScreen;
 
     [Header("Buttons")]
     [SerializeField] Button submitRun;
@@ -52,6 +54,11 @@ public class GameUIScript : MonoBehaviour
 
     int[] run = new int[6] {1,1,1,1,1,1};
 
+    public void LoadingScreenStatus(bool status)
+    {
+        loadingScreen.SetActive(status);
+    }
+
     void Awake()
     {
         for (int i = 0; i < runButtons.Length; i++) 
@@ -70,7 +77,7 @@ public class GameUIScript : MonoBehaviour
         selectionButtonsPopup.SetActive(false);
         targetRunsText.text = "1st INNING";
         teamNames.text = TeamManager.Instance.teamBName.Value.ToString() + " vs " + "<size=150%>" + TeamManager.Instance.teamAName.Value.ToString() + "</size>";
-        boardText.text = TeamManager.Instance.teamBName.Value.ToString() + " vs " + TeamManager.Instance.teamAName.Value.ToString();
+        boardText.text = TeamManager.Instance.teamAName.Value.ToString() + " vs " + TeamManager.Instance.teamBName.Value.ToString();    //board has team A to left and team B to right
         overNumber = 0;
         SpawnPlayerCharactersToSeat();      //only spawn once as teams dont change so players will sit on same side but UI will change
     }
@@ -169,6 +176,36 @@ public class GameUIScript : MonoBehaviour
         }
     }
 
+    public void LocalPlayerStatusSideSet(MatchState state)
+    {
+        RectTransform rectTransform = localPlayerStatusGO.GetComponent<RectTransform>();
+        bool rightSide = false;
+
+        if (state == MatchState.Inning1 && TeamManager.Instance.teamA_Ids.Contains(NetworkManager.Singleton.LocalClientId)) rightSide = true;
+       
+        if (state == MatchState.Inning2 && TeamManager.Instance.teamB_Ids.Contains(NetworkManager.Singleton.LocalClientId)) rightSide= true;
+
+        if (rightSide)
+        {
+            rectTransform.anchorMin = new(1, 1);
+            rectTransform.anchorMax = new(1, 1);
+            rectTransform.anchoredPosition = new(-5, 0);
+            rectTransform.pivot = new(1, 1);
+        }
+        else
+        {
+            rectTransform.anchorMin = new(0, 1);
+            rectTransform.anchorMax = new(0, 1);
+            rectTransform.anchoredPosition = new(5, 0);
+            rectTransform.pivot = new(0, 1);
+        }
+    }
+
+    public void DisableLocalPlayerStatus()
+    {
+        localPlayerStatusGO.SetActive(false);
+    }
+
     void Update()
     {
         if (changeColour)
@@ -220,10 +257,22 @@ public class GameUIScript : MonoBehaviour
         //submitRun.gameObject.SetActive(false);
     }
 
-    public void SetMatchUI(string status, string total, string wickets)
+    public void SetRunsWicketUI(string total, string wickets)
     {
-        currentBallStatusText.text = status;
         totalRunsText.text = total+"-"+wickets;
+    }
+
+    public void SetScoreStatus(string status)
+    {
+        currentBallStatusText.gameObject.SetActive(true);
+        currentBallStatusText.text = status;
+        Invoke(nameof(DisableStatusText),1.5f);
+    }
+
+    void DisableStatusText()
+    {
+        currentBallStatusText.gameObject.SetActive(false);
+        currentBallStatusText.text = string.Empty;
     }
 
     public void SetOverText(bool wicket, bool inningReset, int ballNo)  //this over number and texts are reset during main coroutine 
@@ -279,7 +328,7 @@ public class GameUIScript : MonoBehaviour
         selectedButtonImage.color = Color.black;
     }
 
-    public void ResetUI()
+    public void ResetUI(bool isBatsman)
     {
         run = new int[6] { 1, 1, 1, 1, 1, 1 };
         foreach(Button butt in runButtons)
@@ -288,13 +337,16 @@ public class GameUIScript : MonoBehaviour
         }
         submitRun.gameObject.SetActive(true);
         runSelectionParent.SetActive(true);
-        currentBallStatusText.text = " ";
+        localPlayerStatusGO.SetActive(true);
+        string status = isBatsman ? "You are batting. Select your input..." : "You are bowling. Select your input...";
+        localPlayerStatusGO.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = status;
     }
 
     public void DisableUI()
     {
         runSelectionParent.SetActive(false);
         submitRun.gameObject.SetActive(false);
-        currentBallStatusText.text = " ";
+        localPlayerStatusGO.SetActive(true);
+        localPlayerStatusGO.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Players are selecting their input...";
     }
 }

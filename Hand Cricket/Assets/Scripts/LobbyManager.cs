@@ -53,13 +53,19 @@ public class LobbyManager : MonoBehaviour
         }
         catch (Exception ex) {
             Debug.LogError(ex);
-            PopupSetter("Error!", "Could not sign in to the servers!");
+            PopupSetter("Error!", "Could not sign in to the servers!\nPlease restart the game.");
+            return;
         }
 
         thisPlayerId = AuthenticationService.Instance.PlayerId;
         if (!PlayerPrefs.HasKey("PlayerName")) playerName = "Playa" + thisPlayerId.Substring(0, 5);
         else playerName = PlayerPrefs.GetString("PlayerName");
         PlayerSignedIn?.Invoke();       //subscribed by UI script to get logged in name
+        if(PlayerPrefs.GetInt("HostLeft",0) == 1)
+        {
+            PopupSetter("Game Ended Abruptly!", "Your previous match ended because the host left the lobby!");
+            PlayerPrefs.SetInt("HostLeft", 0);
+        }
     }
  
     //called by host to start the game after lobby is filled
@@ -80,7 +86,7 @@ public class LobbyManager : MonoBehaviour
         CancelInvoke(nameof(LobbyHeartbeat));
         NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
-        TeamManager.Instance.OnNetworkDespawn();
+        TeamManager.Instance.RemoveLobbySceneRefs();
         await Task.Yield();     //to wait one frame for despawn methond to remove all subs
         if(UnityEngine.Random.value < 0.5f) TeamManager.Instance.SwapTeams();
         await Task.Yield();
@@ -129,7 +135,7 @@ public class LobbyManager : MonoBehaviour
         catch (LobbyServiceException ex)
         {
             Debug.LogError(ex);
-            PopupSetter("ERROR", ex.Message);
+            PopupSetter("Error", ex.Message);
             return false;
         }
     }
@@ -143,7 +149,7 @@ public class LobbyManager : MonoBehaviour
         }
         catch (LobbyServiceException ex) { 
             Debug.LogError(ex);
-            PopupSetter("ERROR", ex.Message);
+            PopupSetter("Error", ex.Message);
             return null;
         }
         
@@ -172,7 +178,7 @@ public class LobbyManager : MonoBehaviour
         }
         catch (LobbyServiceException ex) { 
             Debug.LogError(ex);
-            PopupSetter("ERROR", ex.Message);
+            PopupSetter("Error", ex.Message);
             return false;
         }
     }
