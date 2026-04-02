@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.InteropServices.ComTypes;
 using TMPro;
 using Unity.Netcode;
 using UnityEngine;
@@ -275,20 +274,26 @@ public class GameManager : NetworkBehaviour
     {
         currentMatchState = MatchState.MatchOver;
         string winnerTeam;
+        bool teamAWon = false;
+        bool noWinner = false;
         if (totalRuns >= targetRuns)
         {
             winnerTeam = TeamManager.Instance.teamBName.Value.ToString();
+            teamAWon = false;
         }
         else if (totalRuns < targetRuns - 1)
         {
             winnerTeam = TeamManager.Instance.teamAName.Value.ToString();
+            teamAWon = true;
         }
         else        //when total runs is targer - 1
         {
             winnerTeam = "No one";
+            noWinner = true;
         }
         gameUIScript.SetRunsWicketUI(totalRuns.ToString(), wickets.ToString());
         gameUIScript.SetScoreStatus(winnerTeam + " has won this match!");
+        StartCoroutine(GameOver(teamAWon,noWinner));
     }
 
     void ResetInning()
@@ -469,6 +474,7 @@ public class GameManager : NetworkBehaviour
         {
             //GameOver and send everyone back to lobby with popup
             //add here when gameover logic is made
+            StartCoroutine(GameOver(false, true));
         }
         if (teamCount == 0 && !NetworkManager.IsServer) return;
         bool didActivePlayerLeave = teamA ? index == teamA_index : index == teamB_index;
@@ -514,6 +520,17 @@ public class GameManager : NetworkBehaviour
         {
             batsmanLeftDuringSimulation = true;     //this is used in resetrunselection to bring in new batsman after over
         }
+    }
+
+    IEnumerator GameOver(bool teamAWon, bool noWinner)
+    {
+        yield return new WaitForSeconds(2);
+        gameUIScript.LoadingScreenStatus(true);
+        gameUIScript.GameOver(teamAWon, noWinner);
+        yield return new WaitForSeconds(0.1f);
+        gameUIScript.LoadingScreenStatus(false);
+        yield return new WaitForSeconds(3f);
+        if(NetworkManager.IsHost) _ = LobbyManager.Instance.EndGameCreateLobby();       //host sends players to lobby and restarts a server
     }
 }
 public enum MatchState

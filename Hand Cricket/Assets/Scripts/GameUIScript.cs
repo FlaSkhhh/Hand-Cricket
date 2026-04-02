@@ -13,6 +13,8 @@ public class GameUIScript : MonoBehaviour
     [SerializeField] Transform teamAHotSeat;
     [SerializeField] Transform teamBHotSeat;
     [SerializeField] TextMeshPro boardText;
+    [SerializeField] Transform winningTeamLineups;
+    [SerializeField] Transform losingTeamLineups;
 
     [Header("GameObjects")]
     [SerializeField] GameObject runSelectionParent;
@@ -61,6 +63,7 @@ public class GameUIScript : MonoBehaviour
 
     void Awake()
     {
+        mainGameTable.gameObject.SetActive(true);
         for (int i = 0; i < runButtons.Length; i++) 
         {
             int index = i;
@@ -348,5 +351,43 @@ public class GameUIScript : MonoBehaviour
         submitRun.gameObject.SetActive(false);
         localPlayerStatusGO.SetActive(true);
         localPlayerStatusGO.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Players are selecting their input...";
+    }
+
+    public void GameOver(bool teamAWon, bool noWinners)
+    {
+        mainGameTable.gameObject.SetActive(false);
+        string animationNameA;
+        string animationNameB;
+        if (noWinners)
+        {
+            animationNameA = animationNameB = "lose";
+            teamAWon = true;        //so that team A is infront when tie 
+        }
+        else
+        {
+            animationNameA = teamAWon ? "win" : "lose";
+            animationNameB = teamAWon ? "lose" : "win";
+        }
+
+        for (int i = 0; i < TeamManager.Instance.teamA_Ids.Count; i++)
+        {
+            Transform pos = TeamManager.Instance.playerCharacters[TeamManager.Instance.teamA_Ids[i]].transform;
+            pos.parent = teamAWon ? winningTeamLineups.GetChild(i) : losingTeamLineups.GetChild(i);
+            pos.localPosition = Vector3.zero;
+            pos.localRotation = Quaternion.Euler(Vector3.zero);
+            pos.GetComponent<Animator>().Play(animationNameA);
+            
+            //adding a bit of offset to get butt on chair
+        }
+        for (int i = 0; i < TeamManager.Instance.teamB_Ids.Count; i++)
+        {
+          
+            Transform bos = TeamManager.Instance.playerCharacters[TeamManager.Instance.teamB_Ids[i]].transform;
+            bos.parent = teamAWon ? losingTeamLineups.GetChild(i) : winningTeamLineups.GetChild(i);
+            bos.localPosition = Vector3.zero;
+            bos.localRotation = Quaternion.Euler(Vector3.zero);
+            bos.GetComponent<Animator>().Play(animationNameB);
+            
+        }
     }
 }

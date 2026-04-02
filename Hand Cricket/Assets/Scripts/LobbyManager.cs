@@ -84,8 +84,7 @@ public class LobbyManager : MonoBehaviour
             return;
         }
         CancelInvoke(nameof(LobbyHeartbeat));
-        NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
-        NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
+
         TeamManager.Instance.RemoveLobbySceneRefs();
         await Task.Yield();     //to wait one frame for despawn methond to remove all subs
         if(UnityEngine.Random.value < 0.5f) TeamManager.Instance.SwapTeams();
@@ -93,6 +92,52 @@ public class LobbyManager : MonoBehaviour
         NetworkManager.Singleton.SceneManager.LoadScene("Game Scene",LoadSceneMode.Single);
     }
   
+    public async Task EndGameCreateLobby()
+    {
+        //just start lobby as relay is still active
+        try
+        {
+            CreateLobbyOptions options = new CreateLobbyOptions
+            {
+                Data = new Dictionary<string, DataObject>
+                {
+                    { "RelayCode", new DataObject(DataObject.VisibilityOptions.Member, relayJoinCode) }
+                },
+            };
+            Lobby lobby = await LobbyService.Instance.CreateLobbyAsync(playerName, 10, options);     //hardcoding 10 because i aint adding variable teamsize
+            Debug.Log("Lobby Created Code " + lobby.LobbyCode);
+            activeLobby = lobby;
+            InvokeRepeating(nameof(LobbyHeartbeat), 15f, 15f);
+            EndGameJoinLobbyRpc(lobby.LobbyCode);
+
+            await Task.Delay(500);
+            NetworkManager.Singleton.SceneManager.LoadScene("Lobby Scene", LoadSceneMode.Single);
+        }
+        catch (LobbyServiceException ex)
+        {
+            Debug.LogError(ex);
+            PopupSetter("Error", ex.Message);
+            NetworkManager.Singleton.Shutdown();
+            activeLobby = null;
+            SceneManager.LoadScene(0);
+        }
+    }
+
+    [Rpc(SendTo.NotServer)]
+    async void EndGameJoinLobbyRpc(string code)
+    {
+        try
+        {
+            if(!NetworkManager.Singleton.IsHost) activeLobby = await LobbyService.Instance.JoinLobbyByIdAsync(code);
+        }
+        catch (LobbyServiceException ex)
+        {
+            Debug.LogError(ex);
+            PopupSetter("Error", ex.Message);
+            NetworkManager.Singleton.Shutdown();
+            SceneManager.LoadScene(0);
+        }
+    }
 
     public async Task<bool> CreateLobby(int maxPlayers)
     {
@@ -191,6 +236,7 @@ public class LobbyManager : MonoBehaviour
             if (isHost) CancelInvoke(nameof(LobbyHeartbeat));
             activeLobby = null;
             NetworkManager.Singleton.Shutdown();
+            OnDestroy();
             Debug.Log("Lobby Left");
             return true;
         }
@@ -290,5 +336,14 @@ public class LobbyManager : MonoBehaviour
     {
         GameObject go = Instantiate(popupGO);
         go.GetComponent<PopupScript>().PopupActivation(headerT, bodyT);
+    }
+
+    void OnDestroy()
+    {
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
+        }
     }
 }

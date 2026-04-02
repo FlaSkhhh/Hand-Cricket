@@ -60,7 +60,9 @@ public class TeamManager : NetworkBehaviour
             //lobbyUIScript.TeamsNameUpdate();    //because host triggers the name change anyway
             FixedString32Bytes _ = LobbyManager.Instance.PlayerNameGetter() +","+ PlayerPrefs.GetString("CustomCharacter").ToString();
             SendNameToServerRpc(_);
-            NetworkManager.OnClientDisconnectCallback += ClientDisconnected;
+            NetworkManager.OnClientDisconnectCallback += HostDisconnected;
+            lobbyUIScript.TeamsNameUpdate(true);
+            lobbyUIScript.TeamsNameUpdate(false);
             return; 
         }
         teamAName.Value = "TMA";
@@ -73,13 +75,32 @@ public class TeamManager : NetworkBehaviour
         {
             RemoveLobbySceneRefs();
         }
-        if(current.buildIndex == 0)
+        if(current.buildIndex == 0)     //this is not called for first time loading as network manager isnt spawned yet
         {
             UnsubToPlayersLists();      //when game finishes 
+            ResetLobbyState();
         }
     }
 
     #region Lobby Scene Stuff
+
+    async void ResetLobbyState()
+    {
+        lobbyUIScript = FindObjectsByType<LobbyUIScript>(FindObjectsSortMode.None)[0];
+
+        teamA_Ids.OnListChanged += OnTeamAListChanged;
+        teamB_Ids.OnListChanged += OnTeamBListChanged;
+        teamAName.OnValueChanged += OnTeamANameChanged;
+        teamBName.OnValueChanged += OnTeamBNameChanged;
+        lobbyUIScript.PlayerNameChange();
+        lobbyUIScript.TeamsNameUpdate(true);        //change both team names from default
+        lobbyUIScript.TeamsNameUpdate(false);
+        if (NetworkManager.IsHost) { lobbyUIScript.RecreatedLobby();}
+        else { lobbyUIScript.JoinedLobby(); }       
+        await SpawnPlayerCharactersInGameScene();     //this resets dicts and spawns chars again
+        needsTeamLineupUpdate = true;
+    }
+
     public void TeamNameChanged(string name)
     {
         TeamNameUpdateRpc(name, isLocalPlayerTeamA);
@@ -246,7 +267,7 @@ public class TeamManager : NetworkBehaviour
             //team A captain
             lobbyUIScript.ChangeTeamNameIFStatus(true, true);
         }
-        else if(teamB_Ids.Count >0 && teamB_Ids[0] == NetworkManager.LocalClientId)
+        else if(teamB_Ids.Count > 0 && teamB_Ids[0] == NetworkManager.LocalClientId)
         {
             //team B captain
             lobbyUIScript.ChangeTeamNameIFStatus(true, false);
@@ -300,9 +321,12 @@ public class TeamManager : NetworkBehaviour
         {
             _ = teamA_Ids.Contains(cid) ? teamA_Ids.Remove(cid) : teamB_Ids.Remove(cid);
         }
-        Destroy(playerCharacters[cid]);
-        playerCharacters.Remove(cid);
-        playerNames.Remove(cid);
+        if (SceneManager.GetActiveScene().buildIndex == 0)      //only do this in lobby scene as theres a different way in game scene to remove player
+        {
+            Destroy(playerCharacters[cid]);
+            playerCharacters.Remove(cid);
+            playerNames.Remove(cid);
+        }
     }
 
     //called when game starts to avoid the UI scene carryover subs also called when relay stops in lobby
@@ -330,7 +354,7 @@ public class TeamManager : NetworkBehaviour
         teamA_Ids.OnListChanged -= OnTeamAListChangedInGame;
         teamB_Ids.OnListChanged -= OnTeamBListChangedInGame;
         SceneManager.activeSceneChanged -= SceneChanged;
-        NetworkManager.OnClientDisconnectCallback -= ClientDisconnected;      //only remove when in game scene
+        NetworkManager.OnClientDisconnectCallback -= HostDisconnected;
     }
 
 
@@ -371,6 +395,7 @@ public class TeamManager : NetworkBehaviour
     {
         if (changeEvent.Type == NetworkListEvent<ulong>.EventType.Remove)
         {
+            string playerLName = playerNames[changeEvent.Value];
             playerNames.Remove(changeEvent.Value);
             if (playerCharacters.TryGetValue(changeEvent.Value, out GameObject go))
             {
@@ -381,7 +406,7 @@ public class TeamManager : NetworkBehaviour
             //teamA_Ids has already been changed so we need to rearrange the lists
             gameManager.HandlePlayerRemoved(true, changeEvent.Index, teamA_Ids.Count);
             GameObject gop = Instantiate(popupGO);
-            gop.GetComponent<PopupScript>().PopupActivation("Player Disconnected!", $"Someone from {teamAName.Value} has disconnected from the server!");
+            gop.GetComponent<PopupScript>().PopupActivation("Player Disconnected!", $"{playerLName} from Team {teamAName.Value} has disconnected from the server!");
             StartCoroutine(DestroyPlayerLeftPopup(gop));
             //gameUIScript.ChangePlayerSeats();
         }
@@ -391,6 +416,7 @@ public class TeamManager : NetworkBehaviour
     {
         if (changeEvent.Type == NetworkListEvent<ulong>.EventType.Remove)
         {
+            string playerLName = playerNames[changeEvent.Value];
             playerNames.Remove(changeEvent.Value);
             if (playerCharacters.TryGetValue(changeEvent.Value, out GameObject go))
             {
@@ -400,7 +426,7 @@ public class TeamManager : NetworkBehaviour
 
             gameManager.HandlePlayerRemoved(false, changeEvent.Index, teamB_Ids.Count);
             GameObject gop = Instantiate(popupGO);
-            gop.GetComponent<PopupScript>().PopupActivation("Player Disconnected!", $"Someone from {teamBName.Value} has disconnected from the server!");
+            gop.GetComponent<PopupScript>().PopupActivation("Player Disconnected!", $"{playerLName} from Team {teamBName.Value} has disconnected from the server!");
             StartCoroutine(DestroyPlayerLeftPopup(gop));
             //gameUIScript.ChangePlayerSeats();
         }
@@ -416,7 +442,7 @@ public class TeamManager : NetworkBehaviour
     {
         foreach (GameObject character in playerCharacters.Values)
         {
-            Destroy(character);
+            if(character != null) Destroy(character);
         }
         playerCharacters.Clear();
         int counter = 0;
@@ -454,17 +480,16 @@ public class TeamManager : NetworkBehaviour
         }
     }
 
-    void ClientDisconnected(ulong disconnectedClientId)
+    void HostDisconnected(ulong disconnectedClientId)
     {
         if (disconnectedClientId == NetworkManager.ServerClientId) 
         {
-            NetworkManager.Singleton.Shutdown();
-
-            if (LobbyManager.Instance != null) Destroy(LobbyManager.Instance.gameObject);
-            NetworkManager.OnClientDisconnectCallback -= ClientDisconnected;
+            Debug.LogError("HOST DISCONNECTED!");
+            NetworkManager.OnClientDisconnectCallback -= HostDisconnected;
             SceneManager.activeSceneChanged -= SceneChanged;
             PlayerPrefs.SetInt("HostLeft", 1);
             SceneManager.LoadScene(0);
+            NetworkManager.Singleton.Shutdown();
         }
     }
 }

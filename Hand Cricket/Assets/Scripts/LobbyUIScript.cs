@@ -3,7 +3,6 @@ using System;
 using Unity.Netcode;
 using Unity.Services.Lobbies.Models;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class LobbyUIScript : MonoBehaviour
@@ -58,16 +57,16 @@ public class LobbyUIScript : MonoBehaviour
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
         startupLoadingAnimator.gameObject.SetActive(true);
         loadingScreen.SetActive(false);     //removing regular loading because new startup splash screen type image is used for signin loading
-    }
-
-    void Start()
-    {
         mainCamera.transform.rotation = Quaternion.Euler(38.2f, 0, 0);
         playUIPage.SetActive(true);
         mainBench.SetActive(true);
         startUIPage.SetActive(false);
         lobbySearchUIPage.SetActive(false);
         lobbyUIPage.SetActive(false);
+    }
+
+    void Start()
+    {   
         playButton.onClick.AddListener(PlayButtonPress);
         createLobby.onClick.AddListener(CreateLobby);
         searchLobby.onClick.AddListener(SearchLobby);
@@ -83,13 +82,13 @@ public class LobbyUIScript : MonoBehaviour
         teamBName.interactable = false;
         changeTeams.onClick.AddListener(ChangeTeams);
 
-        LobbyManager.Instance.PlayerSignedIn += PlayerNameChange;
+        LobbyManager.Instance.PlayerSignedIn += PlayerNameChange;       //for first time players without name in prefs
 
         LobbyManager.Instance.LineupPositionsSetter(teamALineups, teamBLineups);
         LobbyManager.Instance.LoadingScreenSetter(loadingScreen);
     }
 
-    void PlayerNameChange()
+    public void PlayerNameChange()
     {
         nameField.text = LobbyManager.Instance.PlayerNameGetter();
         startupLoadingAnimator.SetTrigger("LoadingComplete");
@@ -203,12 +202,11 @@ public class LobbyUIScript : MonoBehaviour
     async void LeaveLobby()
     {
         LobbyManager.Instance.LoadingScreenStatus(true);
-        bool result = await LobbyManager.Instance.LeaveLobby();
-        if (!result) mainCamera.transform.rotation = Quaternion.Euler(21.6f, 0, 0);
-        else mainCamera.transform.rotation = Quaternion.Euler(38.2f, 0, 0);
-        lobbyUIPage.SetActive(!result);
-        startUIPage.SetActive(result);
-        mainBench.SetActive(result);
+        bool result = await LobbyManager.Instance.LeaveLobby();     //no need for result because closing lobby is not imp as going back
+        mainCamera.transform.rotation = Quaternion.Euler(38.2f, 0, 0);
+        lobbyUIPage.SetActive(false);
+        startUIPage.SetActive(true);
+        mainBench.SetActive(true);
         LobbyManager.Instance.LoadingScreenStatus(false);
     }
 
@@ -220,6 +218,15 @@ public class LobbyUIScript : MonoBehaviour
         lobbyUIPage.SetActive(true);
         startGame.gameObject.SetActive(false);
         Debug.Log("Joined Lobby!");
+    }
+
+    public void RecreatedLobby()
+    {
+        mainCamera.transform.rotation = Quaternion.Euler(21.6f, 0, 0);
+        mainBench.SetActive(false);
+        lobbySearchUIPage.SetActive(false);
+        lobbyUIPage.SetActive(true);
+        startGame.gameObject.SetActive(true);
     }
 
     void ChangeTeams()
@@ -309,11 +316,6 @@ public class LobbyUIScript : MonoBehaviour
         else captainChangeTeamTipText.SetActive(false);
         if (active && teamA) teamAName.interactable = true;
         if (active && !teamA) teamBName.interactable = true;
-    }
-
-    public void StartupLoadingComplete()
-    {
-        Destroy(startupLoadingAnimator.gameObject);
     }
 
     void PopupSetter(string headerT, string bodyT)
