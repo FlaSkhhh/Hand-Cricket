@@ -60,7 +60,6 @@ public class TeamManager : NetworkBehaviour
             //lobbyUIScript.TeamsNameUpdate();    //because host triggers the name change anyway
             FixedString32Bytes _ = LobbyManager.Instance.PlayerNameGetter() +","+ PlayerPrefs.GetString("CustomCharacter").ToString();
             SendNameToServerRpc(_);
-            NetworkManager.OnClientDisconnectCallback += HostDisconnected;
             lobbyUIScript.TeamsNameUpdate(true);
             lobbyUIScript.TeamsNameUpdate(false);
             return; 
@@ -329,7 +328,7 @@ public class TeamManager : NetworkBehaviour
         }
     }
 
-    //called when game starts to avoid the UI scene carryover subs also called when relay stops in lobby
+    //called when game scene starts to avoid the UI scene carryover subs also called when relay stops in lobby
 
     public void RemoveLobbySceneRefs()
     {
@@ -337,24 +336,6 @@ public class TeamManager : NetworkBehaviour
         teamB_Ids.OnListChanged -= OnTeamBListChanged;
         teamAName.OnValueChanged -= OnTeamANameChanged;
         teamBName.OnValueChanged -= OnTeamBNameChanged;
-    }
-
-    public override void OnNetworkDespawn()
-    {
-        try
-        {
-            foreach (GameObject go in playerCharacters.Values) { if(go != null) Destroy(go); }
-            playerCharacters.Clear();
-        }
-        catch { }//if gameobjects are null
-        teamA_Ids.OnListChanged -= OnTeamAListChanged;
-        teamB_Ids.OnListChanged -= OnTeamBListChanged;
-        teamAName.OnValueChanged -= OnTeamANameChanged;
-        teamBName.OnValueChanged -= OnTeamBNameChanged;
-        teamA_Ids.OnListChanged -= OnTeamAListChangedInGame;
-        teamB_Ids.OnListChanged -= OnTeamBListChangedInGame;
-        SceneManager.activeSceneChanged -= SceneChanged;
-        NetworkManager.OnClientDisconnectCallback -= HostDisconnected;
     }
 
 
@@ -395,7 +376,8 @@ public class TeamManager : NetworkBehaviour
     {
         if (changeEvent.Type == NetworkListEvent<ulong>.EventType.Remove)
         {
-            string playerLName = playerNames[changeEvent.Value];
+            string playerLName = playerNames[changeEvent.Value].Split(',')[0];
+            Debug.Log($"Player {playerLName} with id {changeEvent.Value} left!");
             playerNames.Remove(changeEvent.Value);
             if (playerCharacters.TryGetValue(changeEvent.Value, out GameObject go))
             {
@@ -417,6 +399,7 @@ public class TeamManager : NetworkBehaviour
         if (changeEvent.Type == NetworkListEvent<ulong>.EventType.Remove)
         {
             string playerLName = playerNames[changeEvent.Value];
+            Debug.Log($"Player {playerLName} with id {changeEvent.Value} left!");
             playerNames.Remove(changeEvent.Value);
             if (playerCharacters.TryGetValue(changeEvent.Value, out GameObject go))
             {
@@ -426,7 +409,7 @@ public class TeamManager : NetworkBehaviour
 
             gameManager.HandlePlayerRemoved(false, changeEvent.Index, teamB_Ids.Count);
             GameObject gop = Instantiate(popupGO);
-            gop.GetComponent<PopupScript>().PopupActivation("Player Disconnected!", $"{playerLName} from Team {teamBName.Value} has disconnected from the server!");
+            gop.GetComponent<PopupScript>().PopupActivation("Player Disconnected!", $"{playerLName.Split(',')[0]} from Team {teamBName.Value} has disconnected from the server!");
             StartCoroutine(DestroyPlayerLeftPopup(gop));
             //gameUIScript.ChangePlayerSeats();
         }
@@ -434,7 +417,7 @@ public class TeamManager : NetworkBehaviour
 
     IEnumerator DestroyPlayerLeftPopup(GameObject go)
     {
-        yield return new WaitForSecondsRealtime(1f);
+        yield return new WaitForSecondsRealtime(1.5f);
         if(go!=null)Destroy(go);
     }
 
@@ -480,16 +463,22 @@ public class TeamManager : NetworkBehaviour
         }
     }
 
-    void HostDisconnected(ulong disconnectedClientId)
+    public override void OnNetworkDespawn()
     {
-        if (disconnectedClientId == NetworkManager.ServerClientId) 
+        try
         {
-            Debug.LogError("HOST DISCONNECTED!");
-            NetworkManager.OnClientDisconnectCallback -= HostDisconnected;
-            SceneManager.activeSceneChanged -= SceneChanged;
-            PlayerPrefs.SetInt("HostLeft", 1);
-            SceneManager.LoadScene(0);
-            NetworkManager.Singleton.Shutdown();
+            foreach (GameObject go in playerCharacters.Values) { if (go != null) Destroy(go); }
+            playerCharacters.Clear();
         }
+        catch { }//if gameobjects are null
+        teamA_Ids.OnListChanged -= OnTeamAListChanged;
+        teamB_Ids.OnListChanged -= OnTeamBListChanged;
+        teamAName.OnValueChanged -= OnTeamANameChanged;
+        teamBName.OnValueChanged -= OnTeamBNameChanged;
+        teamA_Ids.OnListChanged -= OnTeamAListChangedInGame;
+        teamB_Ids.OnListChanged -= OnTeamBListChangedInGame;
+        SceneManager.activeSceneChanged -= SceneChanged;
+        if (SceneManager.GetActiveScene().buildIndex == 0 && NetworkManager.IsHost) LobbyManager.Instance.LeaveLobbyAfterHostDisconnection();    //for host leaving in lobby sceme 
+        //SceneManager.LoadScene(0);
     }
 }

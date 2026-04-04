@@ -269,7 +269,7 @@ public class GameUIScript : MonoBehaviour
     {
         currentBallStatusText.gameObject.SetActive(true);
         currentBallStatusText.text = status;
-        Invoke(nameof(DisableStatusText),1.5f);
+        Invoke(nameof(DisableStatusText),2.5f);
     }
 
     void DisableStatusText()
@@ -351,6 +351,13 @@ public class GameUIScript : MonoBehaviour
         submitRun.gameObject.SetActive(false);
         localPlayerStatusGO.SetActive(true);
         localPlayerStatusGO.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = "Players are selecting their input...";
+    }
+
+    public void GameOver()
+    {
+        runSelectionParent.SetActive(false);
+        submitRun.gameObject.SetActive(false);
+        localPlayerStatusGO.SetActive(false);
     }
 
     public void GameOver(bool teamAWon, bool noWinners)

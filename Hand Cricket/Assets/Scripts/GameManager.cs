@@ -167,6 +167,8 @@ public class GameManager : NetworkBehaviour
             if (batsmanRun[i] == bowlerRun[i])
             {
                 wickets++;
+                bool didBatsmanDisconnect = batsmanLeftDuringSimulation;
+                batsmanLeftDuringSimulation = false;
                 gameUIScript.SetRunsWicketUI(totalRuns.ToString(), wickets.ToString());
 
                 //show a small wicket UI here with batsman balls and runs before resetting them
@@ -181,7 +183,8 @@ public class GameManager : NetworkBehaviour
 
                 if (currentMatchState == MatchState.Inning1)
                 {
-                    if (teamA_index >= TeamManager.Instance.teamA_Ids.Count - 1)
+                    bool hasMoreBatsmen = teamA_index < TeamManager.Instance.teamA_Ids.Count - (didBatsmanDisconnect ? 0 : 1);
+                    if (!hasMoreBatsmen)
                     {
                         //all batsman out for team A in first inning
                         targetRuns = totalRuns + 1;
@@ -194,13 +197,14 @@ public class GameManager : NetworkBehaviour
                     }
                     else
                     {
-                        if(!batsmanLeftDuringSimulation) teamA_index++;
+                        if (!didBatsmanDisconnect) teamA_index++;
                         gameUIScript.SetOverText(true, false, -1);      //non final batsman out so skip rest of over
                     }
                 }
                 else
                 {
-                    if (teamB_index >= TeamManager.Instance.teamB_Ids.Count - 1)
+                    bool hasMoreBatsmen = teamB_index < TeamManager.Instance.teamB_Ids.Count - (didBatsmanDisconnect ? 0 : 1);
+                    if (!hasMoreBatsmen)
                     {
                         //winner decided here based on target runs and total runs as team 
                         MatchWinnerCheck();
@@ -210,7 +214,7 @@ public class GameManager : NetworkBehaviour
                     }
                     else
                     {
-                        if (!batsmanLeftDuringSimulation) teamB_index++;
+                        teamB_index++;
                         gameUIScript.SetOverText(true, false, -1);
                     }
                 }
@@ -470,13 +474,16 @@ public class GameManager : NetworkBehaviour
 
     public void HandlePlayerRemoved(bool teamA, int index, int teamCount)
     {
+        //here index is the playerindex who left and teamCount is new team count after player left
         if (teamCount == 0 && NetworkManager.IsServer) 
         {
             //GameOver and send everyone back to lobby with popup
             //add here when gameover logic is made
             StartCoroutine(GameOver(false, true));
+            return;
         }
         if (teamCount == 0 && !NetworkManager.IsServer) return;
+
         bool didActivePlayerLeave = teamA ? index == teamA_index : index == teamB_index;
         bool isBattingTeam = (currentMatchState == MatchState.Inning1 && teamA) ||
                          (currentMatchState == MatchState.Inning2 && !teamA);
@@ -502,14 +509,19 @@ public class GameManager : NetworkBehaviour
         //bowler leaves in middle of simulation we still decrement because when over ends naturally, it will correct the index by adding or reseting to 0
         if (!isBattingTeam && didActivePlayerLeave && overResultDisplayPhase)
         {
-            if(teamA)teamA_index--;
+            if(teamA) teamA_index--;
             else teamB_index--;
         }
-        //for when last indexed player leaves, we reset it to 0 again for ResetRunSelection 
-        if (!overResultDisplayPhase)
+        else if(!isBattingTeam && didActivePlayerLeave && !overResultDisplayPhase)
         {
-            if (teamA && teamA_index >= teamCount) teamA_index = 0;
-            else if (!teamA && teamB_index >= teamCount) teamB_index = 0;
+            if (teamA) teamA_index = teamA_index >= teamCount ? 0 : teamA_index;
+            else teamB_index = teamB_index >= teamCount ? 0 : teamB_index;
+        }
+
+        //for when batsman leaves before simulation, we reset the batting guy
+        if (isBattingTeam && didActivePlayerLeave && !overResultDisplayPhase)
+        {
+            BatsmanLeftChanges();
         }
         
         if (!overResultDisplayPhase && didActivePlayerLeave)
@@ -524,6 +536,7 @@ public class GameManager : NetworkBehaviour
 
     IEnumerator GameOver(bool teamAWon, bool noWinner)
     {
+        gameUIScript.GameOver();
         yield return new WaitForSeconds(2);
         gameUIScript.LoadingScreenStatus(true);
         gameUIScript.GameOver(teamAWon, noWinner);

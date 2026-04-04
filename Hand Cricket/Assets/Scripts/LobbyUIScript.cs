@@ -82,7 +82,8 @@ public class LobbyUIScript : MonoBehaviour
         teamBName.interactable = false;
         changeTeams.onClick.AddListener(ChangeTeams);
 
-        LobbyManager.Instance.PlayerSignedIn += PlayerNameChange;       //for first time players without name in prefs
+        if (!LobbyManager.Instance.signInComplete) LobbyManager.Instance.PlayerSignedIn += PlayerNameChange;       //for first time players without name in prefs
+        else PlayerNameChange();
 
         LobbyManager.Instance.LineupPositionsSetter(teamALineups, teamBLineups);
         LobbyManager.Instance.LoadingScreenSetter(loadingScreen);
@@ -93,6 +94,7 @@ public class LobbyUIScript : MonoBehaviour
         nameField.text = LobbyManager.Instance.PlayerNameGetter();
         startupLoadingAnimator.SetTrigger("LoadingComplete");
     }
+  
 
     void PlayButtonPress()
     {
@@ -117,8 +119,8 @@ public class LobbyUIScript : MonoBehaviour
 
     async void CreateLobby()
     {
-        maxPlayers = 10;
         LobbyManager.Instance.LoadingScreenStatus(true);
+        maxPlayers = 10;
         bool completion = await LobbyManager.Instance.CreateLobby(maxPlayers);
         mainBench.SetActive(!completion);
         if(completion)mainCamera.transform.rotation = Quaternion.Euler(21.6f, 0, 0);
@@ -199,14 +201,16 @@ public class LobbyUIScript : MonoBehaviour
         LobbyManager.Instance.LoadingScreenStatus(false);
     }
 
-    async void LeaveLobby()
+    public async void LeaveLobby()
     {
         LobbyManager.Instance.LoadingScreenStatus(true);
         bool result = await LobbyManager.Instance.LeaveLobby();     //no need for result because closing lobby is not imp as going back
         mainCamera.transform.rotation = Quaternion.Euler(38.2f, 0, 0);
         lobbyUIPage.SetActive(false);
         startUIPage.SetActive(true);
+        playUIPage.SetActive(false);
         mainBench.SetActive(true);
+        lobbySearchUIPage.SetActive(false);
         LobbyManager.Instance.LoadingScreenStatus(false);
     }
 
@@ -214,6 +218,7 @@ public class LobbyUIScript : MonoBehaviour
     {
         mainCamera.transform.rotation = Quaternion.Euler(21.6f, 0, 0);
         mainBench.SetActive(false);
+        playUIPage.SetActive(false);
         lobbySearchUIPage.SetActive(false);
         lobbyUIPage.SetActive(true);
         startGame.gameObject.SetActive(false);
@@ -227,17 +232,18 @@ public class LobbyUIScript : MonoBehaviour
         lobbySearchUIPage.SetActive(false);
         lobbyUIPage.SetActive(true);
         startGame.gameObject.SetActive(true);
+        playUIPage.SetActive(false);
     }
 
     void ChangeTeams()
     {
         if (TeamManager.Instance.teamA_Ids.Contains(NetworkManager.Singleton.LocalClientId))
         {
-            if (TeamManager.Instance.teamB_Ids.Count >= 6) { PopupSetter("ERROR", "TEAM IS ALREADY FULL!"); return; }
+            if (TeamManager.Instance.teamB_Ids.Count >= 6) { PopupSetter("ERROR", "Team is already full!"); return; }
         }
         else
         {
-            if (TeamManager.Instance.teamA_Ids.Count >= 6) { PopupSetter("ERROR", "TEAM IS ALREADY FULL!"); return; }
+            if (TeamManager.Instance.teamA_Ids.Count >= 6) { PopupSetter("ERROR", "Team is already full!"); return; }
         }
         TeamManager.Instance.ChangeTeamForPlayerRpc(NetworkManager.Singleton.LocalClientId);
         changeTeams.interactable = false;

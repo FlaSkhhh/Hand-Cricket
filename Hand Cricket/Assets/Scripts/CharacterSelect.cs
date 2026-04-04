@@ -33,7 +33,7 @@ public class CharacterSelect : MonoBehaviour
         }
         else
         {
-            Destroy(instance);
+            Destroy(instance.gameObject);
             instance = this;
         }
         DontDestroyOnLoad(gameObject);
