@@ -454,6 +454,12 @@ public class TeamManager : NetworkBehaviour
 
     #endregion
 
+    [Rpc(SendTo.NotServer)]
+    public void EndGameJoinLobbyRpc(string code)
+    {
+        if (!NetworkManager.Singleton.IsHost) StartCoroutine(LobbyManager.Instance.EndGameJoinLobby(code));
+    }
+
     void Update()
     {
         if (needsTeamLineupUpdate)

@@ -296,7 +296,7 @@ public class GameManager : NetworkBehaviour
             noWinner = true;
         }
         gameUIScript.SetRunsWicketUI(totalRuns.ToString(), wickets.ToString());
-        gameUIScript.SetScoreStatus(winnerTeam + " has won this match!");
+        gameUIScript.SetScoreStatus("Team "+ winnerTeam + " has won this match!");
         StartCoroutine(GameOver(teamAWon,noWinner));
     }
 

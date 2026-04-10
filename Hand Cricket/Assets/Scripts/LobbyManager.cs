@@ -1,15 +1,16 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
+using Unity.Networking.Transport.Relay;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Lobbies;
 using Unity.Services.Lobbies.Models;
 using Unity.Services.Relay;
 using Unity.Services.Relay.Models;
-using Unity.Networking.Transport.Relay;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -111,6 +112,7 @@ public class LobbyManager : MonoBehaviour
         //just start lobby as relay is still active
         try
         {
+            activeLobby = null;
             CreateLobbyOptions options = new CreateLobbyOptions
             {
                 Data = new Dictionary<string, DataObject>
@@ -121,10 +123,11 @@ public class LobbyManager : MonoBehaviour
             Lobby lobby = await LobbyService.Instance.CreateLobbyAsync(playerName, 10, options);     //hardcoding 10 because i aint adding variable teamsize
             Debug.Log("Lobby Created Code " + lobby.LobbyCode);
             activeLobby = lobby;
+            isHost = true;
             InvokeRepeating(nameof(LobbyHeartbeat), 15f, 15f);
-            EndGameJoinLobbyRpc(lobby.LobbyCode);
-
-            await Task.Delay(1000);
+            
+            TeamManager.Instance.EndGameJoinLobbyRpc(lobby.Id);
+            
             NetworkManager.Singleton.SceneManager.LoadScene("Lobby Scene", LoadSceneMode.Single);
         }
         catch (LobbyServiceException ex)
@@ -133,23 +136,27 @@ public class LobbyManager : MonoBehaviour
             PopupSetter("Error", ex.Message);
             NetworkManager.Singleton.Shutdown();
             activeLobby = null;
+            isHost = false;
             SceneManager.LoadScene(0);
         }
     }
 
-    [Rpc(SendTo.NotServer)]
-    async void EndGameJoinLobbyRpc(string code)
+    public IEnumerator EndGameJoinLobby(string code)
     {
-        try
+        yield return new WaitForSeconds(1.5f);
+        activeLobby = null;
+        var t = LobbyService.Instance.JoinLobbyByIdAsync(code);
+        yield return new WaitUntil(() => t.IsCompleted);
+        if (t.IsFaulted)
         {
-            if (!NetworkManager.Singleton.IsHost) activeLobby = await LobbyService.Instance.JoinLobbyByIdAsync(code);
-        }
-        catch (LobbyServiceException ex)
-        {
-            Debug.LogError(ex);
-            PopupSetter("Error", ex.Message);
+            Debug.LogError(t.Exception);
+            PopupSetter("Error", "Failed to rejoin the lobby.");
             NetworkManager.Singleton.Shutdown();
             SceneManager.LoadScene(0);
+        }
+        else
+        {
+            activeLobby = t.Result;
         }
     }
 
